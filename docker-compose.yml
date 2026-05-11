@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  blogwork:
+    build:
+      context: .
+      dockerfile: docker/blogwork.Dockerfile
+    container_name: acg-blogwork
+    restart: unless-stopped
+    volumes:
+      - ./deploy/blogwork/application.yml:/app/config/application.yml:ro
+    ports:
+      - "7979:7979"
+
+  adminwork:
+    build:
+      context: .
+      dockerfile: docker/adminwork.Dockerfile
+    container_name: acg-adminwork
+    restart: unless-stopped
+    volumes:
+      - ./deploy/adminwork/application.yml:/app/config/application.yml:ro
+    ports:
+      - "7980:7980"
+
+  ai:
+    build:
+      context: .
+      dockerfile: docker/ai.Dockerfile
+    container_name: acg-ai
+    restart: unless-stopped
+    env_file:
+      - ./deploy/ai/.env
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    container_name: acg-web
+    restart: unless-stopped
+    depends_on:
+      - blogwork
+      - adminwork
+      - ai
+    ports:
+      - "80:80"
+
