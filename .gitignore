@@ -20,3 +20,46 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+# Java / Maven
+**/target/
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Frontend build output / deps
+web/node_modules/
+web/dist/
+
+# Python caches / packaging
+AI/.venv/
+AI/**/__pycache__/
+AI/.pytest_cache/
+AI/.tmp/
+AI/.tmp-pip/
+AI/acg_blog_ai.egg-info/
+
+# IDE
+.idea/
+*.iml
+
+# Env / local overrides
+server/src/main/resources/Application-local.yml
+
+# Sensitive local config
+AI/.env
+AI/.env.local
+AI/.env.*.local
+!AI/.env.example
+AI/acg-blog-chat-history.jsonl
+AI/blog-sync-state.json
+web/.env.local
+web/.env.*.local
+blogwork/src/main/resources/application.yml
+adminwork/src/main/resources/application.yml
+
+# Local work records
+worklist/
+AI/findings.md
+AI/progress.md
+AI/task_plan.md
+AI/implementation-steps.md

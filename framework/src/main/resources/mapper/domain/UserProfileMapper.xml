@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.UserProfileMapper">
+
+    <sql id="ArticleBaseColumns">
+        cp.id                                       AS id,
+        COALESCE(NULLIF(cp.slug, ''), CONCAT('post-', cp.id)) AS slug,
+        cp.title                                    AS title,
+        cp.summary                                  AS summary,
+        cc.category_name                            AS category,
+        cc.category_code                            AS categorySlug,
+        su.nickname                                 AS author,
+        DATE_FORMAT(cp.published_time, '%Y-%m-%d') AS publishedAt,
+        cp.reading_minutes                          AS readingMinutes,
+        cp.cover_tone                               AS coverTone,
+        cp.is_featured                              AS featured,
+        cp.ranking                                  AS ranking,
+        cp.view_count                               AS views,
+        cp.like_count                               AS likes,
+        cp.favorite_count                           AS favorites,
+        IFNULL(col.title, '')                       AS `column`
+    </sql>
+
+    <sql id="ArticleJoinTables">
+        FROM content_post cp
+                 LEFT JOIN content_category cc ON cc.id = cp.category_id
+                 LEFT JOIN sys_user su ON su.id = cp.author_id
+                 LEFT JOIN content_column col ON col.id = cp.column_id
+    </sql>
+
+    <sql id="ArticlePublishWhere">
+        cp.publish_status = 1
+        AND cp.deleted = 0
+        AND cp.visibility = 1
+    </sql>
+
+    <select id="selectProfileBaseByUserId" resultType="java.util.HashMap">
+        SELECT id,
+               nickname,
+               IFNULL(username, '')   AS level,
+               IFNULL(signature, '')  AS signature
+        FROM sys_user
+        WHERE id = #{userId}
+          AND status = 1
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectProfileStatsByUserId" resultType="java.util.HashMap">
+        SELECT
+            (SELECT COUNT(1) FROM content_favorite f WHERE f.user_id = #{userId}) AS favorites,
+            (SELECT COUNT(1) FROM content_comment c WHERE c.user_id = #{userId} AND c.deleted = 0 AND c.status = 1) AS comments,
+            (SELECT COUNT(1) FROM content_view_history h WHERE h.user_id = #{userId}) AS history
+    </select>
+
+    <select id="selectFavoriteArticlesByUserId" resultType="java.util.HashMap">
+        SELECT
+            <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        INNER JOIN content_favorite cf ON cf.post_id = cp.id
+        WHERE cf.user_id = #{userId}
+          AND <include refid="ArticlePublishWhere"/>
+        ORDER BY cf.create_time DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectHistoryArticlesByUserId" resultType="java.util.HashMap">
+        SELECT
+            <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        INNER JOIN content_view_history vh ON vh.post_id = cp.id
+        WHERE vh.user_id = #{userId}
+          AND <include refid="ArticlePublishWhere"/>
+        ORDER BY vh.view_time DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.ContentPostMapper">
+
+    <sql id="ArticleBaseColumns">
+        cp.id                                                   AS id,
+        COALESCE(NULLIF(cp.slug, ''), CONCAT('post-', cp.id))  AS slug,
+        cp.title                                                AS title,
+        cp.summary                                              AS summary,
+        cc.category_name                                        AS category,
+        cc.category_code                                        AS categorySlug,
+        su.nickname                                             AS author,
+        DATE_FORMAT(cp.published_time, '%Y-%m-%d')             AS publishedAt,
+        cp.reading_minutes                                      AS readingMinutes,
+        cp.cover_tone                                           AS coverTone,
+        cp.is_featured                                          AS featured,
+        cp.ranking                                              AS ranking,
+        cp.view_count                                           AS views,
+        cp.like_count                                           AS likes,
+        cp.favorite_count                                       AS favorites,
+        IFNULL(col.title, '')                                   AS `column`
+    </sql>
+
+    <sql id="ArticleJoinTables">
+        FROM content_post cp
+                 LEFT JOIN content_category cc ON cc.id = cp.category_id
+                 LEFT JOIN sys_user su ON su.id = cp.author_id
+                 LEFT JOIN content_column col ON col.id = cp.column_id
+    </sql>
+
+    <sql id="ArticlePublishWhere">
+        WHERE cp.publish_status = 1
+          AND cp.deleted = 0
+          AND cp.visibility = 1
+    </sql>
+
+    <select id="selectFeaturedArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        AND cp.is_featured = 1
+        ORDER BY cp.published_time DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectLatestArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        ORDER BY cp.published_time DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRankingArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        ORDER BY IFNULL(cp.ranking, 999999) ASC, cp.view_count DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectHeroFeaturedArticle" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        ORDER BY cp.is_featured DESC, cp.published_time DESC, cp.id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        <if test="category != null and category != ''">
+            AND cc.category_code = #{category}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (cp.title LIKE CONCAT('%', #{keyword}, '%') OR cp.summary LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="tag != null and tag != ''">
+            AND EXISTS (
+            SELECT 1 FROM content_post_tag pt
+            JOIN content_tag t ON t.id = pt.tag_id AND t.status = 1
+            WHERE pt.post_id = cp.id AND t.tag_name = #{tag}
+            )
+        </if>
+        <choose>
+            <when test="popularSort">
+                ORDER BY cp.view_count DESC, cp.id DESC
+            </when>
+            <otherwise>
+                ORDER BY cp.published_time DESC, cp.id DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectArticleBySlug" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        AND (cp.slug = #{slug} OR CONCAT('post-', cp.id) = #{slug})
+        LIMIT 1
+    </select>
+
+    <select id="selectRelatedArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        AND NOT (cp.slug = #{slug} OR CONCAT('post-', cp.id) = #{slug})
+        AND (
+            cp.category_id = (SELECT p0.category_id FROM content_post p0 WHERE (p0.slug = #{slug} OR CONCAT('post-', p0.id) = #{slug}) LIMIT 1)
+            OR EXISTS (
+                SELECT 1
+                FROM content_post_tag cur_pt
+                JOIN content_post base_p ON (base_p.slug = #{slug} OR CONCAT('post-', base_p.id) = #{slug})
+                JOIN content_post_tag base_pt ON base_pt.post_id = base_p.id
+                WHERE cur_pt.post_id = cp.id
+                  AND cur_pt.tag_id = base_pt.tag_id
+            )
+        )
+        ORDER BY cp.published_time DESC, cp.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="searchArticles" resultType="java.util.HashMap">
+        SELECT
+        <include refid="ArticleBaseColumns"/>
+        <include refid="ArticleJoinTables"/>
+        <include refid="ArticlePublishWhere"/>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                cp.title LIKE CONCAT('%', #{keyword}, '%')
+                OR cp.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR EXISTS (
+                    SELECT 1
+                    FROM content_post_tag pt
+                    JOIN content_tag t ON t.id = pt.tag_id
+                    WHERE pt.post_id = cp.id
+                      AND t.status = 1
+                      AND t.tag_name LIKE CONCAT('%', #{keyword}, '%')
+                )
+            )
+        </if>
+        ORDER BY cp.published_time DESC, cp.id DESC
+    </select>
+
+</mapper>

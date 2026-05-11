@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.AdminUserMapper">
+
+    <sql id="AdminUserWhere">
+        WHERE u.deleted = 0
+        <if test="status != null">
+            AND u.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                IFNULL(u.username, '') LIKE CONCAT('%', #{keyword}, '%')
+                OR IFNULL(u.nickname, '') LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </sql>
+
+    <select id="countUsers" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM sys_user u
+        <include refid="AdminUserWhere"/>
+    </select>
+
+    <select id="selectUsers" resultType="java.util.HashMap">
+        SELECT
+            u.id                                             AS id,
+            IFNULL(u.username, '')                           AS username,
+            IFNULL(u.nickname, '')                           AS nickname,
+            IFNULL(u.signature, '')                          AS signature,
+            u.status                                         AS status,
+            DATE_FORMAT(u.last_login_time, '%Y-%m-%d %H:%i:%s') AS lastLoginTime,
+            DATE_FORMAT(u.create_time, '%Y-%m-%d %H:%i:%s') AS createTime
+        FROM sys_user u
+        <include refid="AdminUserWhere"/>
+        ORDER BY u.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectUserById" resultType="java.util.HashMap">
+        SELECT
+            u.id                                             AS id,
+            IFNULL(u.username, '')                           AS username,
+            IFNULL(u.nickname, '')                           AS nickname,
+            IFNULL(u.signature, '')                          AS signature,
+            u.status                                         AS status,
+            DATE_FORMAT(u.last_login_time, '%Y-%m-%d %H:%i:%s') AS lastLoginTime,
+            DATE_FORMAT(u.create_time, '%Y-%m-%d %H:%i:%s') AS createTime
+        FROM sys_user u
+        WHERE u.id = #{id}
+          AND u.deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insertUser">
+        INSERT INTO sys_user (
+            username, nickname, password_hash, signature, status, deleted
+        ) VALUES (
+            #{username}, #{nickname}, #{passwordHash}, #{signature}, #{status}, 0
+        )
+    </insert>
+
+    <select id="lastInsertId" resultType="java.lang.Long">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <update id="updateUser">
+        UPDATE sys_user
+        SET username = #{username},
+            nickname = #{nickname},
+            signature = #{signature},
+            status = #{status}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updateUserStatus">
+        UPDATE sys_user
+        SET status = #{status}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updateUserPassword">
+        UPDATE sys_user
+        SET password_hash = #{passwordHash}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <select id="selectRoleCodesByUserId" resultType="java.lang.String">
+        SELECT r.role_name
+        FROM sys_user_role ur
+                 JOIN sys_role r ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId}
+          AND r.status = 1
+    </select>
+
+    <delete id="deleteUserRolesByUserId">
+        DELETE FROM sys_user_role
+        WHERE user_id = #{userId}
+    </delete>
+
+    <insert id="insertUserRoleByCode">
+        INSERT INTO sys_user_role (user_id, role_id)
+        SELECT #{userId}, r.id
+        FROM sys_role r
+        WHERE r.role_name = #{roleCode}
+        LIMIT 1
+    </insert>
+
+</mapper>

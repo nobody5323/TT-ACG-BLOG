@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.AdminPostMapper">
+
+    <sql id="AdminPostWhere">
+        WHERE cp.deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (
+                cp.title LIKE CONCAT('%', #{keyword}, '%')
+                OR cp.summary LIKE CONCAT('%', #{keyword}, '%')
+                OR cp.slug LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        <if test="publishStatus != null">
+            AND cp.publish_status = #{publishStatus}
+        </if>
+    </sql>
+
+    <select id="countPosts" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM content_post cp
+        <include refid="AdminPostWhere"/>
+    </select>
+
+    <select id="selectPosts" resultType="java.util.HashMap">
+        SELECT
+            cp.id                                            AS id,
+            COALESCE(NULLIF(cp.slug, ''), CONCAT('post-', cp.id)) AS slug,
+            cp.title                                         AS title,
+            IFNULL(cp.summary, '')                           AS summary,
+            cp.publish_status                                AS publishStatus,
+            cp.visibility                                    AS visibility,
+            cp.is_featured                                   AS isFeatured,
+            cp.is_top                                        AS isTop,
+            DATE_FORMAT(cp.published_time, '%Y-%m-%d %H:%i:%s') AS publishedTime,
+            DATE_FORMAT(cp.update_time, '%Y-%m-%d %H:%i:%s')    AS updateTime
+        FROM content_post cp
+        <include refid="AdminPostWhere"/>
+        ORDER BY cp.update_time DESC, cp.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectPostById" resultType="java.util.HashMap">
+        SELECT
+            cp.id                  AS id,
+            cp.slug                AS slug,
+            cp.post_type           AS postType,
+            cp.title               AS title,
+            IFNULL(cp.summary, '') AS summary,
+            cp.reading_minutes     AS readingMinutes,
+            IFNULL(cp.cover_url, '') AS coverUrl,
+            IFNULL(cp.cover_tone, '') AS coverTone,
+            cp.content             AS content,
+            cp.author_id           AS authorId,
+            cp.board_id            AS boardId,
+            cp.category_id         AS categoryId,
+            cp.column_id           AS columnId,
+            cp.publish_status      AS publishStatus,
+            cp.visibility          AS visibility,
+            cp.is_top              AS isTop,
+            cp.is_featured         AS isFeatured,
+            cp.ranking             AS ranking
+        FROM content_post cp
+        WHERE cp.id = #{id}
+          AND cp.deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insertPost">
+        INSERT INTO content_post (
+            slug, post_type, title, summary, reading_minutes,
+            cover_url, cover_tone, content, author_id, board_id,
+            category_id, column_id, publish_status, visibility,
+            is_top, is_featured, ranking, published_time, deleted
+        ) VALUES (
+            #{req.slug},
+            #{req.postType},
+            #{req.title},
+            #{req.summary},
+            #{req.readingMinutes},
+            #{req.coverUrl},
+            #{req.coverTone},
+            #{req.content},
+            #{authorId},
+            #{req.boardId},
+            #{req.categoryId},
+            #{req.columnId},
+            0,
+            #{req.visibility},
+            #{req.isTop},
+            #{req.isFeatured},
+            #{req.ranking},
+            NULL,
+            0
+        )
+    </insert>
+
+    <select id="lastInsertId" resultType="java.lang.Long">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <update id="updatePost">
+        UPDATE content_post
+        SET slug = #{req.slug},
+            post_type = #{req.postType},
+            title = #{req.title},
+            summary = #{req.summary},
+            reading_minutes = #{req.readingMinutes},
+            cover_url = #{req.coverUrl},
+            cover_tone = #{req.coverTone},
+            content = #{req.content},
+            board_id = #{req.boardId},
+            category_id = #{req.categoryId},
+            column_id = #{req.columnId},
+            visibility = #{req.visibility},
+            is_top = #{req.isTop},
+            is_featured = #{req.isFeatured},
+            ranking = #{req.ranking}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updatePostStatus">
+        UPDATE content_post
+        SET publish_status = #{toStatus},
+            published_time = CASE WHEN #{toStatus} = 1 THEN NOW() ELSE published_time END
+        WHERE id = #{id}
+          AND deleted = 0
+          AND publish_status = #{fromStatus}
+    </update>
+
+    <update id="logicDeletePost">
+        UPDATE content_post
+        SET deleted = 1
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+</mapper>

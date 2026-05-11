@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.AdminCommentMapper">
+
+    <sql id="AdminCommentWhere">
+        WHERE c.deleted = 0
+          AND c.parent_id = 0
+        <if test="status != null">
+            AND c.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                c.content LIKE CONCAT('%', #{keyword}, '%')
+                OR IFNULL(u.nickname, '') LIKE CONCAT('%', #{keyword}, '%')
+                OR IFNULL(p.title, '') LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </sql>
+
+    <select id="countComments" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+                 LEFT JOIN content_post p ON p.id = c.post_id
+        <include refid="AdminCommentWhere"/>
+    </select>
+
+    <select id="selectComments" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.status                                         AS status,
+            c.deleted                                        AS deleted,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname,
+            IFNULL(p.title, '')                              AS articleTitle
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+                 LEFT JOIN content_post p ON p.id = c.post_id
+        <include refid="AdminCommentWhere"/>
+        ORDER BY c.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="selectCommentById" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.status                                         AS status,
+            c.deleted                                        AS deleted,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname,
+            IFNULL(p.title, '')                              AS articleTitle
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+                 LEFT JOIN content_post p ON p.id = c.post_id
+        WHERE c.id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectRepliesByRootId" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.status                                         AS status,
+            c.deleted                                        AS deleted,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname,
+            ''                                               AS articleTitle
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE c.deleted = 0
+          AND c.parent_id != 0
+          AND c.root_id = #{rootId}
+        ORDER BY c.create_time ASC, c.id ASC
+    </select>
+
+    <insert id="insertReply">
+        INSERT INTO content_comment (
+            post_id, user_id, parent_id, root_id,
+            content, status, like_count, deleted
+        ) VALUES (
+            #{postId}, #{userId}, #{parentId}, #{rootId},
+            #{content}, 1, 0, 0
+        )
+    </insert>
+
+    <select id="lastInsertId" resultType="java.lang.Long">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <update id="updateCommentStatus">
+        UPDATE content_comment
+        SET status = #{status}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="softDeleteComment">
+        UPDATE content_comment
+        SET deleted = 1,
+            status = 0
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="increasePostCommentCount">
+        UPDATE content_post
+        SET comment_count = comment_count + 1
+        WHERE id = #{postId}
+    </update>
+
+    <update id="decreasePostCommentCount">
+        UPDATE content_post
+        SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END
+        WHERE id = #{postId}
+    </update>
+
+    <update id="batchUpdateStatus">
+        UPDATE content_comment
+        SET status = #{status}
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+          AND deleted = 0
+    </update>
+
+</mapper>

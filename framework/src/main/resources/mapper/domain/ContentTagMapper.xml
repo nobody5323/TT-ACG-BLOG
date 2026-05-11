@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.ContentTagMapper">
+
+    <select id="selectHotTags" resultType="java.util.HashMap">
+        SELECT
+            ct.id                      AS id,
+            ct.tag_name                AS name,
+            0                          AS heat
+        FROM content_tag ct
+        WHERE ct.status = 1
+        ORDER BY ct.id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

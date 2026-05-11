@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.ContentCategoryMapper">
+
+    <select id="selectHotCategories" resultType="java.util.HashMap">
+        SELECT
+            cc.id                             AS id,
+            cc.category_name                  AS name,
+            cc.category_code                  AS slug,
+            IFNULL(cc.description, '')        AS description,
+            ''                                AS accent
+        FROM content_category cc
+        WHERE cc.status = 1
+        ORDER BY cc.id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

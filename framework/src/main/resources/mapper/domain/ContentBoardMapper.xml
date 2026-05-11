@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.ContentBoardMapper">
+
+    <select id="selectBoards" resultType="java.util.HashMap">
+        SELECT
+            cb.id                          AS id,
+            cb.board_name                  AS title,
+            IFNULL(cb.description, '')     AS description,
+            (
+                SELECT COUNT(1)
+                FROM content_post p
+                WHERE p.board_id = cb.id
+                  AND p.publish_status = 1
+                  AND p.deleted = 0
+                  AND p.visibility = 1
+            )                              AS threads,
+            ''                              AS tone
+        FROM content_board cb
+        WHERE cb.status = 1
+        ORDER BY cb.sort ASC, cb.id ASC
+    </select>
+
+</mapper>

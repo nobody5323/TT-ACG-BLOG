@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="nobody.domain.mapper.CommentsMapper">
+
+    <select id="selectCommentsBySlug" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname
+        FROM content_comment c
+                 INNER JOIN content_post p ON p.id = c.post_id
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE (p.slug = #{slug} OR CONCAT('post-', p.id) = #{slug})
+          AND p.deleted = 0
+          AND c.status = 1
+          AND c.deleted = 0
+          AND c.parent_id = 0
+        <if test="cursor != null">
+            AND c.id &lt; #{cursor}
+        </if>
+        ORDER BY c.id DESC
+        LIMIT #{size}
+    </select>
+
+    <select id="selectRepliesByRootIds" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE c.status = 1
+          AND c.deleted = 0
+          AND c.parent_id != 0
+          AND c.root_id IN
+            <foreach collection="rootIds" item="id" open="(" close=")" separator=",">
+                #{id}
+            </foreach>
+        ORDER BY c.create_time ASC, c.id ASC
+    </select>
+
+    <select id="selectPostIdBySlug" resultType="java.lang.Long">
+        SELECT p.id
+        FROM content_post p
+        WHERE (p.slug = #{slug} OR CONCAT('post-', p.id) = #{slug})
+          AND p.deleted = 0
+          AND p.publish_status = 1
+          AND p.visibility = 1
+        LIMIT 1
+    </select>
+
+    <insert id="insertComment">
+        INSERT INTO content_comment (
+            post_id,
+            user_id,
+            parent_id,
+            root_id,
+            content,
+            status,
+            like_count,
+            deleted
+        ) VALUES (
+            #{postId},
+            #{userId},
+            #{parentId},
+            #{rootId},
+            #{content},
+            1,
+            0,
+            0
+        )
+    </insert>
+
+    <select id="lastInsertId" resultType="java.lang.Long">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <update id="increasePostCommentCount">
+        UPDATE content_post
+        SET comment_count = comment_count + 1
+        WHERE id = #{postId}
+    </update>
+
+    <update id="decreasePostCommentCount">
+        UPDATE content_post
+        SET comment_count = CASE
+            WHEN comment_count &gt; 0 THEN comment_count - 1
+            ELSE 0
+        END
+        WHERE id = #{postId}
+    </update>
+
+    <select id="selectCommentById" resultType="java.util.HashMap">
+        SELECT
+            c.id                                             AS id,
+            c.post_id                                        AS postId,
+            c.user_id                                        AS userId,
+            c.parent_id                                      AS parentId,
+            c.root_id                                        AS rootId,
+            c.content                                        AS content,
+            c.like_count                                     AS likeCount,
+            DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+            IFNULL(u.nickname, '')                           AS nickname
+        FROM content_comment c
+                 LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE c.id = #{id}
+          AND c.deleted = 0
+        LIMIT 1
+    </select>
+
+    <update id="softDeleteCommentById">
+        UPDATE content_comment
+        SET deleted = 1,
+            status = 0
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+</mapper>
