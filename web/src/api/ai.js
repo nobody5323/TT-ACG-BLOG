@@ -6,10 +6,11 @@ const AI_API_BASE_URL =
   import.meta.env.VITE_AI_API_BASE_URL || (isLocalPreview ? "http://127.0.0.1:8000" : "");
 
 const AI_API_KEY = import.meta.env.VITE_AI_API_KEY || "";
+const SHOULD_SEND_BROWSER_API_KEY = Boolean(AI_API_BASE_URL);
 
 function buildAiHeaders(extra = {}) {
   return {
-    ...(AI_API_KEY ? { "X-API-Key": AI_API_KEY } : {}),
+    ...(SHOULD_SEND_BROWSER_API_KEY && AI_API_KEY ? { "X-API-Key": AI_API_KEY } : {}),
     ...extra,
   };
 }

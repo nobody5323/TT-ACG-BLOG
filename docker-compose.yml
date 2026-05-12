@@ -40,6 +40,8 @@ services:
       dockerfile: docker/web.Dockerfile
     container_name: acg-web
     restart: unless-stopped
+    env_file:
+      - ./deploy/ai/.env
     depends_on:
       - blogwork
       - adminwork
