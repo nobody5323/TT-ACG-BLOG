@@ -6,4 +6,6 @@ import nobody.dto.Login.LoginResponseDto;
 
 public interface LoginService {
     ResponseResult<LoginResponseDto> login(String nickname, String password);
+
+    ResponseResult<LoginResponseDto> register(String nickname, String password);
 }

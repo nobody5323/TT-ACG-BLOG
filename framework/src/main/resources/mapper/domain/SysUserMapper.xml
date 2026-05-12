@@ -30,4 +30,31 @@
         LIMIT 1
     </select>
 
+    <select id="countByNickname" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM sys_user
+        WHERE nickname = #{nickname}
+          AND deleted = 0
+    </select>
+
+    <insert id="insertUser">
+        INSERT INTO sys_user (
+            username, nickname, password_hash, signature, status, deleted
+        ) VALUES (
+            #{username}, #{nickname}, #{passwordHash}, #{signature}, #{status}, 0
+        )
+    </insert>
+
+    <select id="lastInsertId" resultType="java.lang.Long">
+        SELECT LAST_INSERT_ID()
+    </select>
+
+    <insert id="insertUserRoleByRoleName">
+        INSERT INTO sys_user_role (user_id, role_id)
+        SELECT #{userId}, r.id
+        FROM sys_role r
+        WHERE r.role_name = #{roleName}
+        LIMIT 1
+    </insert>
+
 </mapper>

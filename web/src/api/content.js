@@ -81,6 +81,13 @@ export async function loginUser(payload) {
   });
 }
 
+export async function registerUser(payload) {
+  return request("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getUserProfile() {
   return request("/user/profile");
 }

@@ -20,6 +20,17 @@ public interface SysUserMapper {
 
     List<Map<String, Object>> selectByNickname(@Param("nickname") String nickname);
 
-}
+    Long countByNickname(@Param("nickname") String nickname);
 
+    int insertUser(@Param("username") String username,
+                   @Param("nickname") String nickname,
+                   @Param("passwordHash") String passwordHash,
+                   @Param("signature") String signature,
+                   @Param("status") Integer status);
+
+    Long lastInsertId();
+
+    int insertUserRoleByRoleName(@Param("userId") Long userId, @Param("roleName") String roleName);
+
+}
 

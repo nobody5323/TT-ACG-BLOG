@@ -21,4 +21,9 @@ public class LoginController {
     public ResponseResult<LoginResponseDto> login(@RequestBody LoginRequestDto req){
         return loginService.login(req.getNickname(), req.getPassword());
     }
+
+    @PostMapping("/auth/register")
+    public ResponseResult<LoginResponseDto> register(@RequestBody LoginRequestDto req){
+        return loginService.register(req.getNickname(), req.getPassword());
+    }
 }

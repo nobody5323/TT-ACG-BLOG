@@ -5,6 +5,7 @@ import ArticleListPage from "../pages/articles/ArticleListPage.vue";
 import ArticleDetailPage from "../pages/articles/ArticleDetailPage.vue";
 import SearchPage from "../pages/search/SearchPage.vue";
 import LoginPage from "../pages/auth/LoginPage.vue";
+import RegisterPage from "../pages/auth/RegisterPage.vue";
 import UserCenterPage from "../pages/user/UserCenterPage.vue";
 import NotFoundPage from "../pages/not-found/NotFoundPage.vue";
 
@@ -27,12 +28,13 @@ const router = createRouter({
     return { top: 0 };
   },
   routes: [
-    { path: "/", name: "home", component: HomePage, meta: { title: "绯光档案馆" } },
+    { path: "/", name: "home", component: HomePage, meta: { title: "首页" } },
     { path: "/articles", name: "articles", component: ArticleListPage, meta: { title: "文章宇宙" } },
     { path: "/article", redirect: "/articles" },
     { path: "/articles/:slug", name: "article-detail", alias: "/article/:slug", component: ArticleDetailPage, meta: { title: "文章详情" } },
     { path: "/search", name: "search", component: SearchPage, meta: { title: "站内搜索" } },
     { path: "/login", name: "login", component: LoginPage, meta: { title: "登录" } },
+    { path: "/register", name: "register", component: RegisterPage, meta: { title: "注册" } },
     { path: "/user", name: "user-center", component: UserCenterPage, meta: { title: "用户中心" } },
     { path: "/admin/login", name: "admin-login", component: AdminLoginPage, meta: { title: "后台登录" } },
     {
@@ -75,7 +77,6 @@ router.beforeEach((to) => {
   const needAdminAuth = to.matched.some((item) => item.meta?.adminOnly);
   const adminSession = hasAdminSession();
 
-  // 登录页永远允许进入，避免本地残留 session/token 导致无法进入登录界面
   if (to.name === "admin-login") {
     return true;
   }

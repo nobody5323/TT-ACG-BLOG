@@ -10,7 +10,7 @@ const router = useRouter();
 const navItems = [
   { label: "首页", to: "/" },
   { label: "技术文章", to: "/articles" },
-  { label: "检索", to: "/search" },
+  { label: "搜索", to: "/search" },
   { label: "个人中心", to: "/user" },
 ];
 const adminEntry = { label: "后台登录", to: "/admin/login" };
@@ -83,7 +83,10 @@ function submitSearch() {
         >
           {{ appStore.user.nickname }}
         </RouterLink>
-        <RouterLink v-else class="primary-button" to="/login">登录</RouterLink>
+        <template v-else>
+          <RouterLink class="ghost-button" to="/register">注册</RouterLink>
+          <RouterLink class="primary-button" to="/login">登录</RouterLink>
+        </template>
         <button
           class="site-header__toggle"
           type="button"
@@ -111,6 +114,12 @@ function submitSearch() {
           <RouterLink :to="adminEntry.to" class="site-mobile-panel__link">
             {{ adminEntry.label }}
           </RouterLink>
+          <RouterLink to="/register" class="site-mobile-panel__link">
+            注册
+          </RouterLink>
+          <RouterLink to="/login" class="site-mobile-panel__link">
+            登录
+          </RouterLink>
         </nav>
 
         <div class="site-mobile-panel__search">
@@ -128,3 +137,4 @@ function submitSearch() {
     </div>
   </header>
 </template>
+

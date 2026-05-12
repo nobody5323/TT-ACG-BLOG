@@ -57,7 +57,12 @@ async function submitLogin() {
           <li>参与评论与站内活动</li>
           <li>后续接入 AI 助手历史上下文</li>
         </ul>
+        <p style="margin-top: 16px">
+          还没有账号？
+          <RouterLink to="/register" class="primary-button" style="margin-left: 8px">去注册</RouterLink>
+        </p>
       </div>
     </section>
   </WebLayout>
 </template>
+
