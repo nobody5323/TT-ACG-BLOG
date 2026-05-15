@@ -1,16 +1,68 @@
 version: "3.9"
 
 services:
+  mysql:
+    image: mysql:8.4
+    container_name: acg-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-acgblog}
+      MYSQL_USER: ${MYSQL_USER:-acgblog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: acg-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me-redis}"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-change-me-redis} ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   blogwork:
     build:
       context: .
       dockerfile: docker/blogwork.Dockerfile
     container_name: acg-blogwork
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-acgblog}
+      MYSQL_USER: ${MYSQL_USER:-acgblog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
     volumes:
       - ./deploy/blogwork/application.yml:/app/config/application.yml:ro
     ports:
-      - "7979:7979"
+      - "127.0.0.1:7979:7979"
 
   adminwork:
     build:
@@ -18,10 +70,20 @@ services:
       dockerfile: docker/adminwork.Dockerfile
     container_name: acg-adminwork
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-acgblog}
+      MYSQL_USER: ${MYSQL_USER:-acgblog}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
     volumes:
       - ./deploy/adminwork/application.yml:/app/config/application.yml:ro
     ports:
-      - "7980:7980"
+      - "127.0.0.1:7980:7980"
 
   ai:
     build:
@@ -32,7 +94,7 @@ services:
     env_file:
       - ./deploy/ai/.env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   web:
     build:
@@ -48,4 +110,8 @@ services:
       - ai
     ports:
       - "80:80"
+
+volumes:
+  mysql-data:
+  redis-data:
 

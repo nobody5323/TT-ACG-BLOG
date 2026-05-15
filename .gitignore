@@ -46,6 +46,10 @@ AI/acg_blog_ai.egg-info/
 server/src/main/resources/Application-local.yml
 
 # Sensitive local config
+.env
+deploy/ai/.env
+deploy/blogwork/application.yml
+deploy/adminwork/application.yml
 AI/.env
 AI/.env.local
 AI/.env.*.local
