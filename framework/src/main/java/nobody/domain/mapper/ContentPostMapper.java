@@ -36,4 +36,16 @@ public interface ContentPostMapper {
 
     List<Map<String, Object>> searchArticles(@Param("keyword") String keyword);
 
+    int incrementViewCount(@Param("slug") String slug);
+
+    int incrementLikeCount(@Param("slug") String slug, @Param("delta") int delta);
+
+    Map<String, Object> selectCountsBySlug(@Param("slug") String slug);
+
+    Long selectPostIdBySlug(@Param("slug") String slug);
+
+    int insertPostLike(@Param("postId") Long postId,
+                       @Param("userId") Long userId,
+                       @Param("clientId") String clientId);
+
 }

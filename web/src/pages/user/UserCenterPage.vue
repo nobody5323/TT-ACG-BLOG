@@ -42,10 +42,6 @@ onMounted(async () => {
 
       <div class="profile-stats">
         <article>
-          <strong>{{ profile.stats.favorites }}</strong>
-          <span>收藏文章</span>
-        </article>
-        <article>
           <strong>{{ profile.stats.comments }}</strong>
           <span>评论数</span>
         </article>
@@ -54,26 +50,6 @@ onMounted(async () => {
           <span>浏览记录</span>
         </article>
       </div>
-
-      <section class="page-section">
-        <SectionHeading
-          eyebrow="收藏"
-          title="我的收藏"
-          description="可扩展为文章、角色卡、设定条目三个维度。"
-        />
-        <div v-if="profile.favorites.length" class="feature-grid">
-          <ArticleFeatureCard
-            v-for="article in profile.favorites"
-            :key="article.slug"
-            :article="article"
-          />
-        </div>
-        <EmptyState
-          v-else
-          title="还没有收藏内容"
-          description="可以先去首页或文章广场挑一篇喜欢的内容。"
-        />
-      </section>
 
       <section class="page-section">
         <SectionHeading

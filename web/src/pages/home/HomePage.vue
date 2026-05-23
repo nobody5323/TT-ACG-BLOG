@@ -1,19 +1,30 @@
 <script setup>
-import { onMounted, ref } from "vue";
-
+import { onMounted, ref, computed } from "vue";
 import { getHomeData } from "../../api/content";
-import ArticleFeatureCard from "../../components/article/ArticleFeatureCard.vue";
-import ArticleHeroCard from "../../components/article/ArticleHeroCard.vue";
-import BoardCard from "../../components/common/BoardCard.vue";
-import CharacterPanel from "../../components/common/CharacterPanel.vue";
-import RankingList from "../../components/common/RankingList.vue";
-import SectionHeading from "../../components/common/SectionHeading.vue";
-import ColumnShowcaseCard from "../../components/column/ColumnShowcaseCard.vue";
-import CategoryChip from "../../components/tag/CategoryChip.vue";
-import TagBadge from "../../components/tag/TagBadge.vue";
 import WebLayout from "../../layouts/WebLayout.vue";
 
 const home = ref(null);
+
+const categoryIcons = ["✏️", "🎬", "🎮", "🌿", "🎵", "⭐"];
+const tagColors = ["pink", "purple", "teal", "orange", "green", "blue", "amber", "rose"];
+
+function tagColor(index) {
+  return tagColors[index % tagColors.length];
+}
+
+const displayCategories = computed(() => {
+  if (!home.value) return [];
+  return home.value.hotCategories.slice(0, 6).map((cat, i) => ({
+    ...cat,
+    icon: categoryIcons[i % categoryIcons.length],
+  }));
+});
+
+const authorStats = computed(() => {
+  if (!home.value) return [];
+  const metrics = home.value.hero?.metrics || [];
+  return metrics.slice(0, 3);
+});
 
 onMounted(async () => {
   home.value = await getHomeData();
@@ -22,231 +33,206 @@ onMounted(async () => {
 
 <template>
   <WebLayout>
-    <template v-if="home">
-      <section class="hero-world hero-world--scifi container">
-        <div class="hero-world__copy hero-world__copy--wide">
-          <span class="hero-world__eyebrow">{{ home.hero.eyebrow }}</span>
-          <h1>{{ home.hero.title }}</h1>
-          <p>{{ home.hero.subtitle }}</p>
-          <div class="hero-world__actions">
-            <RouterLink class="primary-button" to="/articles">浏览技术文章</RouterLink>
-            <RouterLink class="ghost-button" to="/search">搜索技术关键词</RouterLink>
-          </div>
-          <div class="hero-world__metrics">
-            <article v-for="metric in home.hero.metrics" :key="metric.label">
-              <strong>{{ metric.value }}</strong>
-              <span>{{ metric.label }}</span>
-            </article>
-          </div>
-        </div>
-
-        <div class="hero-scene">
-          <div class="hero-scene__signal">
-            <span>视觉角色面板</span>
-            <strong>个人技术工作台</strong>
-            <p>以二次元风格组织个人开发记录，把前后端实现、架构思考与踩坑复盘沉淀为长期可读的技术资产。</p>
-          </div>
-          <div class="hero-scene__cards">
-            <CharacterPanel
-              v-for="character in home.fandomCharacters.slice(0, 2)"
-              :key="character.id"
-              :character="character"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section class="container hero-dashboard">
-        <div class="editorial-panel">
-          <SectionHeading
-            eyebrow="开发看板"
-            title="本周开发信号"
-            description="快速查看当前更新重点、模块状态与接下来要推进的技术事项。"
-          />
-          <div class="signal-grid">
-            <article
-              v-for="signal in home.editorialSignals"
-              :key="signal.id"
-              class="signal-card"
-            >
-              <p class="signal-card__label">{{ signal.label }}</p>
-              <h3>{{ signal.title }}</h3>
-              <p>{{ signal.description }}</p>
-              <small>{{ signal.status }}</small>
-            </article>
-          </div>
-        </div>
-
-        <aside class="schedule-panel">
-          <div class="schedule-panel__head">
-            <span class="section-heading__eyebrow">每周节奏</span>
-            <h3>更新排期</h3>
-            <p>保持站点持续输出：技术文章、后台能力、体验优化按节奏推进。</p>
-          </div>
-          <div class="schedule-list">
-            <article
-              v-for="item in home.weeklySchedule"
-              :key="item.id"
-              class="schedule-card"
-            >
-              <strong>{{ item.day }}</strong>
-              <div>
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.description }}</p>
-              </div>
-            </article>
-          </div>
-        </aside>
-      </section>
-
-      <section class="container page-section">
-        <SectionHeading
-          eyebrow="精选入口"
-          title="推荐阅读"
-          description="从最有代表性的技术文章开始，快速进入站点内容体系。"
-        />
-        <div class="feature-grid">
-          <ArticleFeatureCard
-            v-for="article in home.featuredArticles"
-            :key="article.slug"
-            :article="article"
-          />
-        </div>
-      </section>
-
-      <section class="container page-section">
-        <SectionHeading
-          eyebrow="角色面板"
-          title="风格角色"
-          description="角色卡片承载站点氛围，用于强化个人博客的视觉记忆点。"
-        />
-        <div class="character-grid">
-          <CharacterPanel
-            v-for="character in home.fandomCharacters"
-            :key="character.id"
-            :character="character"
-          />
-        </div>
-      </section>
-
-      <section class="container page-section">
-        <div class="forum-section">
-          <div>
-            <SectionHeading
-              eyebrow="技术分区"
-              title="专题板块"
-              description="按主题组织文章与讨论，方便定位某一类技术问题。"
-            />
-            <div class="board-grid">
-              <BoardCard v-for="board in home.boards" :key="board.id" :board="board" />
-            </div>
-          </div>
-
-          <div class="topic-universe topic-universe--compact">
-            <SectionHeading
-              eyebrow="标签索引"
-              title="热门主题"
-              description="分类和标签作为索引入口，帮助快速跳转到相关技术内容。"
-            />
-            <div class="topic-universe__categories">
-              <CategoryChip
-                v-for="category in home.hotCategories"
-                :key="category.id"
-                :category="category"
-              />
-            </div>
-            <div class="topic-universe__tags">
-              <TagBadge v-for="tag in home.hotTags" :key="tag.id" :tag="tag" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="container page-section content-grid">
-        <div>
-          <SectionHeading
-            eyebrow="最新文章"
-            title="最近更新"
-            description="按时间顺序展示最近发布的技术记录与开发笔记。"
-          />
-          <div class="feed-list">
-            <RouterLink
-              v-for="article in home.latestArticles"
-              :key="article.slug"
-              class="feed-list__item"
-              :to="article.slug ? { name: 'article-detail', params: { slug: article.slug } } : '/articles'"
-            >
-              <div class="feed-list__cover" :data-tone="article.coverTone" />
-              <div class="feed-list__body">
-                <p>{{ article.category }} / {{ article.publishedAt }}</p>
-                <h3>{{ article.title }}</h3>
-                <span>{{ article.summary }}</span>
-              </div>
+    <!-- Hero Banner -->
+    <section class="page-hero">
+      <div class="page-hero__bg" />
+      <div class="page-hero__bg--overlay" />
+      <div class="page-hero__inner">
+        <div class="page-hero__copy">
+          <h1 class="page-hero__title">青空站</h1>
+          <p class="page-hero__sub">
+            谢谢来看我的博客喵
+          </p>
+          <div class="page-hero__actions">
+            <RouterLink class="primary-button" to="/articles">
+              ✨ 开始阅读
+            </RouterLink>
+            <RouterLink class="ghost-button" to="/about">
+              👤 关于我
             </RouterLink>
           </div>
         </div>
+      </div>
+    </section>
 
-        <aside class="sidebar-stack">
-          <div class="notice-panel">
-            <h3>公告</h3>
-            <ul>
-              <li v-for="note in home.announcements" :key="note">{{ note }}</li>
-            </ul>
+    <!-- Main Content -->
+    <div v-if="home" class="container home-content">
+      <div class="home-content__layout">
+        <!-- Left: Recent Articles -->
+        <div>
+          <div class="section-title">
+            <div class="section-title__left">
+              <span class="section-title__icon">✨</span>
+              <h2>最近文章</h2>
+            </div>
+            <RouterLink class="section-title__more" to="/articles">
+              查看全部 &rsaquo;
+            </RouterLink>
           </div>
-          <div class="notice-panel">
-            <h3>阅读排行</h3>
-            <RankingList :items="home.rankings" />
+
+          <div class="article-grid">
+            <RouterLink
+              v-for="article in home.latestArticles.slice(0, 6)"
+              :key="article.slug"
+              :to="article.slug ? { name: 'article-detail', params: { slug: article.slug } } : '/articles'"
+              class="article-grid-card"
+            >
+              <div class="article-grid-card__cover" :data-tone="article.coverTone">
+                <div class="cover-tone" />
+                <span class="article-grid-card__category">{{ article.category }}</span>
+              </div>
+              <div class="article-grid-card__body">
+                <div class="article-grid-card__title">{{ article.title }}</div>
+                <div class="article-grid-card__summary">{{ article.summary }}</div>
+                <div class="article-grid-card__meta">
+                  <span>📅 {{ article.publishedAt }}</span>
+                  <span>👁 {{ article.views }}</span>
+                  <span>❤️ {{ article.likes }}</span>
+                </div>
+              </div>
+            </RouterLink>
           </div>
-          <ArticleHeroCard :article="home.hero.featured" />
+
+          <!-- Hot Categories (mobile) -->
+          <div v-if="displayCategories.length" class="home-categories-mobile">
+            <div class="section-title" style="margin-top: 40px;">
+              <div class="section-title__left">
+                <span class="section-title__icon">🗂</span>
+                <h2>文章分类</h2>
+              </div>
+            </div>
+            <div class="category-grid">
+              <RouterLink
+                v-for="cat in displayCategories"
+                :key="cat.id"
+                :to="`/articles?category=${cat.slug}`"
+                class="category-item"
+              >
+                <span class="category-item__icon">{{ cat.icon }}</span>
+                <span class="category-item__name">{{ cat.name }}</span>
+                <span v-if="cat.heat" class="category-item__count">{{ cat.heat }}</span>
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Sidebar -->
+        <aside class="sidebar">
+          <!-- Author Card -->
+          <div class="widget author-widget">
+            <img class="author-widget__avatar-img" src="/avatar.jpg" alt="头像" />
+            <div class="author-widget__name">
+              青空站主 <span style="color:var(--amber)">✦</span>
+            </div>
+            <div class="author-widget__bio">
+              谢谢来看我的博客喵
+            </div>
+            <div v-if="authorStats.length" class="author-widget__stats">
+              <div v-for="stat in authorStats" :key="stat.label" class="author-stat">
+                <span class="author-stat__num">{{ stat.value }}</span>
+                <span class="author-stat__label">{{ stat.label }}</span>
+              </div>
+            </div>
+            <RouterLink to="/about" class="author-widget__btn">
+              💬 关于我
+            </RouterLink>
+          </div>
+
+          <!-- Categories Widget -->
+          <div v-if="displayCategories.length" class="widget home-categories-desktop">
+            <div class="widget__title">
+              <span class="widget__title-icon">🗂</span> 文章分类
+            </div>
+            <div class="category-grid">
+              <RouterLink
+                v-for="cat in displayCategories"
+                :key="cat.id"
+                :to="`/articles?category=${cat.slug}`"
+                class="category-item"
+              >
+                <span class="category-item__icon">{{ cat.icon }}</span>
+                <span class="category-item__name">{{ cat.name }}</span>
+                <span v-if="cat.heat" class="category-item__count">{{ cat.heat }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Hot Tags Widget -->
+          <div v-if="home.hotTags && home.hotTags.length" class="widget">
+            <div class="widget__title">
+              <span class="widget__title-icon">🏷</span> 热门标签
+            </div>
+            <div class="tags-cloud">
+              <RouterLink
+                v-for="(tag, i) in home.hotTags.slice(0, 10)"
+                :key="tag.id"
+                :to="`/articles?tag=${tag.name}`"
+                :class="`tag-pill tag-pill--${tagColor(i)}`"
+              >
+                {{ tag.name }}
+                <span v-if="tag.heat" style="opacity:0.65;font-size:0.72rem">{{ tag.heat }}</span>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- Rankings Widget -->
+          <div v-if="home.rankings && home.rankings.length" class="widget">
+            <div class="widget__title">
+              <span class="widget__title-icon">🔥</span> 阅读排行
+            </div>
+            <div class="recent-list">
+              <RouterLink
+                v-for="(article, i) in home.rankings.slice(0, 5)"
+                :key="article.slug"
+                :to="article.slug ? { name: 'article-detail', params: { slug: article.slug } } : '/articles'"
+                class="recent-item"
+              >
+                <span :class="['recent-item__num', i < 3 ? 'recent-item__num--top' : '']">
+                  {{ i + 1 }}
+                </span>
+                <div class="recent-item__thumb" :data-tone="article.coverTone">
+                  <div class="cover-tone" />
+                </div>
+                <div class="recent-item__body">
+                  <div class="recent-item__title">{{ article.title }}</div>
+                  <div class="recent-item__date">{{ article.publishedAt }}</div>
+                </div>
+              </RouterLink>
+            </div>
+          </div>
         </aside>
-      </section>
+      </div>
+    </div>
 
-      <section class="container page-section">
-        <SectionHeading
-          eyebrow="专栏入口"
-          title="个人专栏"
-          description="围绕固定主题持续连载，把碎片经验积累成结构化知识。"
-        />
-        <div class="column-grid">
-          <ColumnShowcaseCard
-            v-for="column in home.columns"
-            :key="column.id"
-            :column="column"
-          />
-        </div>
-      </section>
-
-      <section class="container page-section station-protocol">
-        <SectionHeading
-          eyebrow="站点流程"
-          title="内容生产流"
-          description="从选题、实现、发布到复盘，形成个人技术创作闭环。"
-        />
-
-        <div class="protocol-grid">
-          <article
-            v-for="item in home.stationProtocols"
-            :key="item.id"
-            class="protocol-card"
-          >
-            <span>{{ item.step }}</span>
-            <h3>{{ item.title }}</h3>
-            <p>{{ item.description }}</p>
-          </article>
-        </div>
-
-        <div class="station-protocol__cta">
-          <div>
-            <p class="station-protocol__eyebrow">Next Layer</p>
-            <h3>继续扩展到专题页、工具页与完整后台能力</h3>
-            <p>当前首页结构已能承载个人技术博客长期迭代，无需重做视觉骨架。</p>
-          </div>
-          <div class="station-protocol__actions">
-            <RouterLink class="primary-button" to="/articles">进入技术文章</RouterLink>
-            <RouterLink class="ghost-button" to="/login">进入用户中心</RouterLink>
-          </div>
-        </div>
-      </section>
-    </template>
+    <!-- Loading -->
+    <div v-else class="container home-content">
+      <div style="text-align:center;padding:80px 0;color:var(--muted);">
+        <div style="font-size:2rem;margin-bottom:12px">🌟</div>
+        加载中…
+      </div>
+    </div>
   </WebLayout>
 </template>
+
+<style scoped>
+.home-categories-mobile {
+  display: none;
+}
+.home-categories-desktop {
+  display: block;
+}
+@media (max-width: 1024px) {
+  .home-categories-mobile { display: block; }
+  .home-categories-desktop { display: none; }
+}
+
+.author-widget__avatar-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 12px;
+  display: block;
+  box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.3);
+}
+</style>

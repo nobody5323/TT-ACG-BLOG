@@ -19,5 +19,8 @@ public interface ContentService {
 
     ResponseResult<List<HomeContentDtos.ArticleDto>> search(String keyword);
 
-}
+    ResponseResult<java.util.Map<String, Object>> incrementView(String slug);
 
+    ResponseResult<java.util.Map<String, Object>> toggleLike(String slug, String clientKey);
+
+}

@@ -1,5 +1,6 @@
 package nobody.domain.service.impl;
 
+import nobody.Enum.AppHttpCodeEnum;
 import nobody.domain.entity.ResponseResult;
 import nobody.domain.mapper.ContentBoardMapper;
 import nobody.domain.mapper.ContentCategoryMapper;
@@ -17,7 +18,10 @@ import nobody.dto.content.HomeContentDtos.HeroDto;
 import nobody.dto.content.HomeContentDtos.HeroMetricDto;
 import nobody.dto.content.HomeContentDtos.HomeResponseDto;
 import nobody.dto.content.HomeContentDtos.TagDto;
+import nobody.exception.BusinessException;
+import nobody.utils.SecurityUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -181,6 +185,38 @@ public class ContentServiceImpl implements ContentService {
     }
 
     @Override
+    public ResponseResult<Map<String, Object>> incrementView(String slug) {
+        contentPostMapper.incrementViewCount(slug);
+        return ResponseResult.okResult(countsBySlug(slug));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ResponseResult<Map<String, Object>> toggleLike(String slug, String clientKey) {
+        String normalizedClientKey = clientKey == null ? "" : clientKey.trim();
+        if (normalizedClientKey.isBlank()) {
+            throw new BusinessException(AppHttpCodeEnum.BAD_REQUEST, "缺少点赞访客标识");
+        }
+
+        Long userId = SecurityUtils.getUserId();
+
+        Long postId = contentPostMapper.selectPostIdBySlug(slug);
+        if (postId == null) {
+            throw new BusinessException(AppHttpCodeEnum.NOT_FOUND, "文章不存在");
+        }
+
+        int inserted = contentPostMapper.insertPostLike(postId, userId, normalizedClientKey);
+        if (inserted > 0) {
+            contentPostMapper.incrementLikeCount(slug, 1);
+        }
+
+        Map<String, Object> counts = countsBySlug(slug);
+        counts.put("liked", true);
+        counts.put("likeChanged", inserted > 0);
+        return ResponseResult.okResult(counts);
+    }
+
+    @Override
     public ResponseResult<List<HomeContentDtos.ArticleDto>> search(String keyword) {
         try {
             // 和前端 fallback 行为一致：关键词为空时返回空数组
@@ -259,6 +295,17 @@ public class ContentServiceImpl implements ContentService {
         } catch (Exception ignored) {
             return Collections.emptyList();
         }
+    }
+
+    private Map<String, Object> countsBySlug(String slug) {
+        Map<String, Object> counts = contentPostMapper.selectCountsBySlug(slug);
+        if (counts == null) {
+            counts = new HashMap<>();
+            counts.put("views", 0);
+            counts.put("likes", 0);
+            counts.put("favorites", 0);
+        }
+        return counts;
     }
 
     @SafeVarargs
@@ -430,7 +477,7 @@ public class ContentServiceImpl implements ContentService {
         return List.of(
                 new HomeContentDtos.StationProtocolDto(1L, "01", "进入分区", "从番剧解析、设定考据或角色设定进入内容链路。"),
                 new HomeContentDtos.StationProtocolDto(2L, "02", "沉浸阅读", "通过文章与标签继续扩展相关主题内容。"),
-                new HomeContentDtos.StationProtocolDto(3L, "03", "形成讨论", "参与评论、收藏与回复，沉淀站点长期互动。")
+                new HomeContentDtos.StationProtocolDto(3L, "03", "形成讨论", "参与评论、点赞与回复，沉淀站点长期互动。")
         );
     }
 

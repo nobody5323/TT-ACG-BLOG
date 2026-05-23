@@ -16,13 +16,21 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px 1fr;
-  background:
-    radial-gradient(circle at 6% 10%, rgba(255, 160, 199, 0.35), transparent 22%),
-    radial-gradient(circle at 92% 18%, rgba(145, 232, 209, 0.28), transparent 26%),
-    radial-gradient(circle at 55% 0%, rgba(151, 181, 255, 0.24), transparent 32%),
-    linear-gradient(180deg, #fff9fd 0%, #fffefc 100%);
+  background: url('/admin-bg.jpg') center / cover no-repeat fixed;
   color: var(--admin-text);
   font-family: var(--admin-font);
+}
+
+.admin-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 6% 10%, rgba(255, 160, 199, 0.25), transparent 22%),
+    radial-gradient(circle at 92% 18%, rgba(145, 232, 209, 0.2), transparent 26%),
+    linear-gradient(180deg, rgba(255,249,253,0.88) 0%, rgba(255,254,252,0.85) 100%);
 }
 
 .admin-shell *,
@@ -66,7 +74,8 @@
   top: 0;
   height: 100vh;
   padding: 24px 18px;
-  background: linear-gradient(180deg, #fff9fc 0%, #fffefb 100%);
+  background: rgba(255, 249, 252, 0.88);
+  backdrop-filter: blur(16px);
   z-index: 2;
 }
 
@@ -185,6 +194,8 @@
 
 .admin-main {
   min-height: calc(100vh - 120px);
+  position: relative;
+  z-index: 1;
 }
 
 .admin-grid {
@@ -586,12 +597,20 @@
   display: grid;
   place-items: center;
   padding: 30px;
-  background:
-    radial-gradient(circle at 10% 12%, rgba(255, 169, 207, 0.36), transparent 24%),
-    radial-gradient(circle at 90% 18%, rgba(151, 221, 210, 0.34), transparent 25%),
-    radial-gradient(circle at 44% 0%, rgba(151, 181, 255, 0.25), transparent 30%),
-    linear-gradient(180deg, #fff8fd 0%, #fffefc 100%);
+  background: url('/admin-bg.jpg') center / cover no-repeat fixed;
   font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  position: relative;
+}
+
+.admin-login::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(255, 169, 207, 0.25), transparent 24%),
+    radial-gradient(circle at 90% 18%, rgba(151, 221, 210, 0.22), transparent 25%),
+    linear-gradient(180deg, rgba(255,248,253,0.82) 0%, rgba(255,254,252,0.8) 100%);
 }
 
 .admin-login__layout {
@@ -606,8 +625,11 @@
 .admin-login__card {
   border-radius: 26px;
   border: 1px solid var(--admin-line);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   box-shadow: var(--admin-shadow);
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(20px);
 }
 
 .admin-login__intro {

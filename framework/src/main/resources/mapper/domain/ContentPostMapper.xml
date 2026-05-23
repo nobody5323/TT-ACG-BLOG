@@ -153,4 +153,45 @@
         ORDER BY cp.published_time DESC, cp.id DESC
     </select>
 
+    <update id="incrementViewCount">
+        UPDATE content_post
+        SET view_count = view_count + 1
+        WHERE (slug = #{slug} OR CONCAT('post-', id) = #{slug})
+          AND publish_status = 1
+          AND deleted = 0
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE content_post
+        SET like_count = like_count + #{delta}
+        WHERE (slug = #{slug} OR CONCAT('post-', id) = #{slug})
+          AND publish_status = 1
+          AND deleted = 0
+    </update>
+
+    <select id="selectCountsBySlug" resultType="java.util.HashMap">
+        SELECT cp.view_count AS views,
+               cp.like_count AS likes,
+               cp.favorite_count AS favorites
+        FROM content_post cp
+        WHERE (cp.slug = #{slug} OR CONCAT('post-', cp.id) = #{slug})
+          AND cp.publish_status = 1
+          AND cp.deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectPostIdBySlug" resultType="java.lang.Long">
+        SELECT cp.id
+        FROM content_post cp
+        WHERE (cp.slug = #{slug} OR CONCAT('post-', cp.id) = #{slug})
+          AND cp.publish_status = 1
+          AND cp.deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insertPostLike">
+        INSERT IGNORE INTO content_like (user_id, client_id, post_id, create_time)
+        VALUES (#{userId}, #{clientId}, #{postId}, NOW())
+    </insert>
+
 </mapper>

@@ -16,6 +16,25 @@ function getAuthHeader() {
   };
 }
 
+function getClientId() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const storageKey = "acg-client-id";
+  const existing = window.localStorage.getItem(storageKey);
+  if (existing) {
+    return existing;
+  }
+
+  const nextId =
+    typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  window.localStorage.setItem(storageKey, nextId);
+  return nextId;
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
@@ -72,6 +91,21 @@ export async function getArticleBySlug(slug) {
 export async function searchArticles(keyword) {
   const query = keyword ? `?keyword=${encodeURIComponent(keyword)}` : "";
   return request(`/content/search${query}`);
+}
+
+export async function viewArticle(slug) {
+  const safeSlug = encodeURIComponent(slug ?? "");
+  return request(`/content/articles/${safeSlug}/view`, { method: "POST" });
+}
+
+export async function likeArticle(slug) {
+  const safeSlug = encodeURIComponent(slug ?? "");
+  return request(`/content/articles/${safeSlug}/like`, {
+    method: "POST",
+    headers: {
+      "X-ACG-Client-Id": getClientId(),
+    },
+  });
 }
 
 export async function loginUser(payload) {

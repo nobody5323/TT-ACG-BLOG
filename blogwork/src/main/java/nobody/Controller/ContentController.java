@@ -1,5 +1,6 @@
 package nobody.Controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import nobody.domain.entity.ResponseResult;
 import nobody.domain.service.CommentService;
 import nobody.domain.service.ContentService;
@@ -45,6 +46,18 @@ public class ContentController {
         return contentService.search(keyword);
     }
 
+    @PostMapping("/articles/{slug}/view")
+    public ResponseResult<Map<String, Object>> incrementView(@PathVariable("slug") String slug) {
+        return contentService.incrementView(slug);
+    }
+
+    @PostMapping("/articles/{slug}/like")
+    public ResponseResult<Map<String, Object>> toggleLike(@PathVariable("slug") String slug,
+                                                          @RequestHeader(value = "X-ACG-Client-Id", required = false) String clientId,
+                                                          HttpServletRequest request) {
+        return contentService.toggleLike(slug, resolveClientKey(clientId, request));
+    }
+
     @GetMapping("/articles/{slug}/comments")
     public ResponseResult<CommentDto.ArticleCommentsResponseDto> comments(
             @PathVariable("slug") String slug,
@@ -72,5 +85,16 @@ public class ContentController {
             @RequestBody Map<String, Object> req) {
         String content = req == null ? null : String.valueOf(req.getOrDefault("content", ""));
         return commentService.replyComment(id, content);
+    }
+
+    private String resolveClientKey(String clientId, HttpServletRequest request) {
+        String cleaned = clientId == null ? "" : clientId.trim();
+        if (cleaned.length() >= 8 && cleaned.length() <= 80 && cleaned.matches("[A-Za-z0-9_-]+")) {
+            return "client:" + cleaned;
+        }
+
+        String remoteAddr = request == null ? "" : String.valueOf(request.getRemoteAddr());
+        String userAgent = request == null ? "" : String.valueOf(request.getHeader("User-Agent"));
+        return "fallback:" + Integer.toHexString((remoteAddr + "|" + userAgent).hashCode());
     }
 }

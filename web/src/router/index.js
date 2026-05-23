@@ -7,6 +7,7 @@ import SearchPage from "../pages/search/SearchPage.vue";
 import LoginPage from "../pages/auth/LoginPage.vue";
 import RegisterPage from "../pages/auth/RegisterPage.vue";
 import UserCenterPage from "../pages/user/UserCenterPage.vue";
+import AboutPage from "../pages/about/AboutPage.vue";
 import NotFoundPage from "../pages/not-found/NotFoundPage.vue";
 
 import AdminLayout from "../layouts/AdminLayout.vue";
@@ -36,6 +37,7 @@ const router = createRouter({
     { path: "/login", name: "login", component: LoginPage, meta: { title: "登录" } },
     { path: "/register", name: "register", component: RegisterPage, meta: { title: "注册" } },
     { path: "/user", name: "user-center", component: UserCenterPage, meta: { title: "用户中心" } },
+    { path: "/about", name: "about", component: AboutPage, meta: { title: "关于" } },
     { path: "/admin/login", name: "admin-login", component: AdminLoginPage, meta: { title: "后台登录" } },
     {
       path: "/admin",
@@ -94,7 +96,7 @@ router.beforeEach((to) => {
 });
 
 router.afterEach((to) => {
-  document.title = `${to.meta.title || "绯光档案馆"} | 绯光档案馆`;
+  document.title = `${to.meta.title || "青空站"} | 青空站`;
 });
 
 export default router;

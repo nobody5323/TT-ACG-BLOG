@@ -52,7 +52,7 @@ async function submitRegister() {
       <div class="login-panel">
         <span class="login-panel__eyebrow">新用户注册</span>
         <h1>创建账号并加入终端</h1>
-        <p>注册后会自动登录，你可以继续完善资料、收藏内容并参与互动。</p>
+        <p>注册后会自动登录，你可以继续完善资料、点赞内容并参与互动。</p>
 
         <form class="login-form" @submit.prevent="submitRegister">
           <label>
@@ -74,7 +74,7 @@ async function submitRegister() {
       <div class="login-sidecard">
         <h2>注册后可用</h2>
         <ul>
-          <li>收藏和追踪你关心的文章与专题</li>
+          <li>点赞和追踪你关心的文章与专题</li>
           <li>参与评论互动并管理历史记录</li>
           <li>后续接入 AI 助手上下文记忆能力</li>
         </ul>
@@ -86,4 +86,3 @@ async function submitRegister() {
     </section>
   </WebLayout>
 </template>
-

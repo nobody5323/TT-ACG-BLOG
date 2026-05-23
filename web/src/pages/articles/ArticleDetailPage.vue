@@ -6,7 +6,9 @@ import {
   deleteArticleComment,
   getArticleBySlug,
   getArticleComments,
+  likeArticle,
   replyArticleComment,
+  viewArticle,
 } from "../../api/content";
 import ArticleFeatureCard from "../../components/article/ArticleFeatureCard.vue";
 import EmptyState from "../../components/common/EmptyState.vue";
@@ -38,6 +40,9 @@ const activeReplyId = ref(null);
 const replyDrafts = reactive({});
 const replySubmittingId = ref(null);
 const deletingId = ref(null);
+
+const liked = ref(false);
+const likeLoading = ref(false);
 
 const article = computed(() => payload.value.article);
 const canSubmitComment = computed(
@@ -87,6 +92,24 @@ function canSubmitReply(commentId) {
     content.length <= 500 &&
     replySubmittingId.value !== commentId
   );
+}
+
+function likedStorageKey(slug = route.params.slug) {
+  return `acg-liked-article:${slug ?? ""}`;
+}
+
+function hasLikedArticle(slug = route.params.slug) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.localStorage.getItem(likedStorageKey(slug)) === "1";
+}
+
+function markArticleLiked(slug = route.params.slug) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(likedStorageKey(slug), "1");
 }
 
 async function loadArticle() {
@@ -199,8 +222,33 @@ async function removeComment(comment) {
   }
 }
 
+async function handleLike() {
+  if (liked.value) return;
+  if (likeLoading.value) return;
+  likeLoading.value = true;
+  try {
+    const counts = await likeArticle(route.params.slug);
+    if (payload.value.article && counts) {
+      payload.value.article = { ...payload.value.article, likes: counts.likes ?? payload.value.article.likes };
+    }
+    markArticleLiked();
+    liked.value = Boolean(counts.liked ?? true);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "点赞失败";
+    window.alert(message);
+  } finally {
+    likeLoading.value = false;
+  }
+}
+
 async function loadPage() {
   await loadArticle();
+  liked.value = hasLikedArticle();
+  viewArticle(route.params.slug).then((counts) => {
+    if (payload.value.article && counts) {
+      payload.value.article = { ...payload.value.article, views: counts.views ?? payload.value.article.views };
+    }
+  }).catch(() => {});
   await loadComments({ append: false });
 }
 
@@ -223,8 +271,12 @@ onMounted(loadPage);
           </div>
           <div class="article-hero__stats">
             <span>{{ article.views }} 阅读</span>
-            <span>{{ article.likes }} 点赞</span>
-            <span>{{ article.favorites }} 收藏</span>
+            <button
+              class="stat-btn"
+              :class="{ 'stat-btn--active': liked }"
+              :disabled="likeLoading || liked"
+              @click="handleLike"
+            >{{ article.likes }} {{ liked ? "已点赞" : "点赞" }}</button>
           </div>
         </div>
         <div class="article-hero__cover" :data-tone="article.coverTone">

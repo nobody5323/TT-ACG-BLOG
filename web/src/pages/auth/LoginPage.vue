@@ -53,7 +53,7 @@ async function submitLogin() {
       <div class="login-sidecard">
         <h2>登录后可用</h2>
         <ul>
-          <li>收藏文章和角色设定卡</li>
+          <li>为喜欢的文章点赞</li>
           <li>参与评论与站内活动</li>
           <li>后续接入 AI 助手历史上下文</li>
         </ul>
@@ -65,4 +65,3 @@ async function submitLogin() {
     </section>
   </WebLayout>
 </template>
-
