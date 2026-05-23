@@ -7,6 +7,7 @@ import {
   listAdminPosts,
   offlineAdminPost,
   publishAdminPost,
+  uploadAdminImage,
 } from "../../api/admin";
 
 const posts = ref([]);
@@ -22,11 +23,16 @@ const selectedTags = ref([]);
 const detailOpen = ref(false);
 const detailLoading = ref(false);
 const detail = ref(null);
+const coverUploading = ref(false);
+const inlineImageUploading = ref(false);
+const inlineImages = ref([]);
 
 const form = reactive({
   title: "",
   summary: "",
   content: "",
+  coverUrl: "",
+  coverTone: "",
   status: "published", // published | draft
 });
 
@@ -76,9 +82,12 @@ function closePublishModal() {
   form.title = "";
   form.summary = "";
   form.content = "";
+  form.coverUrl = "";
+  form.coverTone = "";
   form.status = "published";
   newTag.value = "";
   selectedTags.value = [];
+  inlineImages.value = [];
 }
 
 function toggleTag(tag) {
@@ -101,6 +110,65 @@ function removeTag(tag) {
   selectedTags.value = selectedTags.value.filter((t) => t !== tag);
 }
 
+function toPublicUploadUrl(item) {
+  const path = item?.relativePath || "";
+  if (!path) return "";
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+function appendInlineImage(item) {
+  const url = toPublicUploadUrl(item);
+  if (!url) return;
+  const name = item.originalName || item.storedName || "image";
+  const markdown = `![${name}](${url})`;
+  form.content = `${form.content.trimEnd()}\n\n${markdown}\n`;
+}
+
+async function handleCoverUpload(event) {
+  const [file] = event.target.files || [];
+  event.target.value = "";
+  if (!file || coverUploading.value) return;
+
+  coverUploading.value = true;
+  try {
+    const item = await uploadAdminImage(file);
+    form.coverUrl = toPublicUploadUrl(item);
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : "上传封面失败");
+  } finally {
+    coverUploading.value = false;
+  }
+}
+
+async function handleInlineImageUpload(event) {
+  const files = Array.from(event.target.files || []);
+  event.target.value = "";
+  if (!files.length || inlineImageUploading.value) return;
+
+  inlineImageUploading.value = true;
+  try {
+    const uploaded = [];
+    for (const file of files) {
+      const item = await uploadAdminImage(file);
+      uploaded.push(item);
+      appendInlineImage(item);
+    }
+    inlineImages.value = [...inlineImages.value, ...uploaded];
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : "上传正文图片失败");
+  } finally {
+    inlineImageUploading.value = false;
+  }
+}
+
+function insertInlineImage(item) {
+  appendInlineImage(item);
+}
+
+function removeInlineImage(item) {
+  inlineImages.value = inlineImages.value.filter((entry) => entry.relativePath !== item.relativePath);
+}
+
 async function submitPublish() {
   if (!canSubmit.value) return;
 
@@ -111,6 +179,8 @@ async function submitPublish() {
       postType: 1,
       title: form.title.trim(),
       summary: form.summary.trim(),
+      coverUrl: form.coverUrl,
+      coverTone: form.coverTone.trim(),
       content: `${form.content.trim()}\n\n#tags ${selectedTags.value.join(" ")}`,
       readingMinutes: 3,
       visibility: 1,
@@ -254,10 +324,47 @@ onMounted(fetchPosts);
             摘要
             <textarea v-model="form.summary" placeholder="输入摘要（可选）" />
           </label>
+          <div class="admin-upload-grid">
+            <label class="admin-upload-box">
+              文章封面
+              <input type="file" accept="image/*" :disabled="coverUploading" @change="handleCoverUpload" />
+              <small>{{ coverUploading ? "上传中..." : "支持 jpg / png / webp / gif，上传后会写入封面地址" }}</small>
+            </label>
+            <label>
+              封面色调
+              <input v-model="form.coverTone" type="text" placeholder="例如 sunset / midnight，可选" />
+            </label>
+          </div>
+          <div v-if="form.coverUrl" class="admin-cover-preview">
+            <p>封面预览</p>
+            <img :src="form.coverUrl" alt="文章封面预览" />
+            <small>{{ form.coverUrl }}</small>
+          </div>
           <label>
             正文
             <textarea v-model="form.content" class="admin-editor" placeholder="输入正文内容" />
           </label>
+          <label class="admin-upload-box admin-upload-box--inline-images">
+            正文图片
+            <input type="file" accept="image/*" multiple :disabled="inlineImageUploading" @change="handleInlineImageUpload" />
+            <small>{{ inlineImageUploading ? "上传中..." : "上传后会自动把 Markdown 图片插入正文" }}</small>
+          </label>
+          <div v-if="inlineImages.length" class="admin-inline-images">
+            <p>已上传正文图片</p>
+            <ul>
+              <li v-for="item in inlineImages" :key="item.relativePath" class="admin-inline-image">
+                <img :src="toPublicUploadUrl(item)" :alt="item.originalName" />
+                <div>
+                  <strong>{{ item.originalName }}</strong>
+                  <small>{{ toPublicUploadUrl(item) }}</small>
+                </div>
+                <div class="admin-inline-image__actions">
+                  <button type="button" @click="insertInlineImage(item)">插入</button>
+                  <button type="button" @click="removeInlineImage(item)">移除</button>
+                </div>
+              </li>
+            </ul>
+          </div>
 
           <div class="admin-tag-panel">
             <p class="admin-tag-panel__title">标签管理</p>
@@ -312,6 +419,7 @@ onMounted(fetchPosts);
             <p><strong>标题：</strong>{{ detail.title }}</p>
             <p><strong>状态：</strong>{{ statusText(detail.publishStatus) }}</p>
             <p><strong>摘要：</strong>{{ detail.summary }}</p>
+            <p><strong>封面：</strong>{{ detail.coverUrl }}</p>
             <p><strong>正文：</strong></p>
             <pre style="white-space: pre-wrap; margin: 0">{{ detail.content }}</pre>
           </template>

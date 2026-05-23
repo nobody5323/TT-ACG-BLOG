@@ -82,6 +82,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me-redis}
     volumes:
       - ./deploy/adminwork/application.yml:/app/config/application.yml:ro
+      - admin-uploads:/app/uploads
     ports:
       - "127.0.0.1:7980:7980"
 
@@ -114,4 +115,5 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  admin-uploads:
 
