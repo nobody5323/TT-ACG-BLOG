@@ -7,6 +7,7 @@ import {
   listAdminPosts,
   offlineAdminPost,
   publishAdminPost,
+  updateAdminPost,
   uploadAdminImage,
 } from "../../api/admin";
 
@@ -17,6 +18,9 @@ const status = ref("");
 
 const publishOpen = ref(false);
 const publishing = ref(false);
+const editingPostId = ref(null);
+const editOriginal = ref(null);
+const editLoading = ref(false);
 const newTag = ref("");
 const tagPool = ref(["校园", "机甲", "治愈", "悬疑", "百合", "奇幻", "偶像"]);
 const selectedTags = ref([]);
@@ -28,6 +32,7 @@ const inlineImageUploading = ref(false);
 const inlineImages = ref([]);
 
 const form = reactive({
+  slug: "",
   title: "",
   summary: "",
   content: "",
@@ -37,8 +42,10 @@ const form = reactive({
 });
 
 const canSubmit = computed(
-  () => Boolean(form.title.trim()) && Boolean(form.content.trim()) && !publishing.value,
+  () => Boolean(form.title.trim()) && Boolean(form.content.trim()) && !publishing.value && !editLoading.value,
 );
+const isEditing = computed(() => Boolean(editingPostId.value));
+const postModalTitle = computed(() => (isEditing.value ? "修改文章" : "发布文章"));
 
 function statusText(v) {
   if (v === 1) return "已发布";
@@ -74,11 +81,20 @@ async function fetchPosts() {
 }
 
 function openPublishModal() {
+  resetPostForm();
   publishOpen.value = true;
 }
 
 function closePublishModal() {
   publishOpen.value = false;
+  resetPostForm();
+}
+
+function resetPostForm() {
+  editingPostId.value = null;
+  editOriginal.value = null;
+  editLoading.value = false;
+  form.slug = "";
   form.title = "";
   form.summary = "";
   form.content = "";
@@ -88,6 +104,58 @@ function closePublishModal() {
   newTag.value = "";
   selectedTags.value = [];
   inlineImages.value = [];
+}
+
+function splitContentTags(content = "") {
+  const raw = String(content || "");
+  const match = raw.match(/(?:^|\n)#tags\s+([^\n]*)\s*$/);
+  if (!match) {
+    return { content: raw, tags: [] };
+  }
+  return {
+    content: raw.slice(0, match.index).trimEnd(),
+    tags: match[1].split(/\s+/).filter(Boolean),
+  };
+}
+
+function buildContentWithTags() {
+  const content = form.content.trim();
+  if (!selectedTags.value.length) {
+    return content;
+  }
+  return `${content}\n\n#tags ${selectedTags.value.join(" ")}`;
+}
+
+function fillFormFromDetail(data) {
+  const parsed = splitContentTags(data?.content || "");
+  form.slug = data?.slug || "";
+  form.title = data?.title || "";
+  form.summary = data?.summary || "";
+  form.content = parsed.content;
+  form.coverUrl = data?.coverUrl || "";
+  form.coverTone = data?.coverTone || "";
+  form.status = data?.publishStatus === 1 ? "published" : "draft";
+  selectedTags.value = parsed.tags;
+  for (const tag of parsed.tags) {
+    if (!tagPool.value.includes(tag)) tagPool.value.push(tag);
+  }
+}
+
+async function openEditModal(item) {
+  resetPostForm();
+  publishOpen.value = true;
+  editLoading.value = true;
+  editingPostId.value = item.id;
+  try {
+    const data = await getAdminPost(item.id);
+    editOriginal.value = data;
+    fillFormFromDetail(data);
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : "加载文章失败");
+    closePublishModal();
+  } finally {
+    editLoading.value = false;
+  }
 }
 
 function toggleTag(tag) {
@@ -174,19 +242,31 @@ async function submitPublish() {
 
   publishing.value = true;
   try {
+    const original = editOriginal.value || {};
     const payload = {
-      slug: `post-${Date.now()}`,
-      postType: 1,
+      slug: form.slug || (isEditing.value ? `post-${editingPostId.value}` : `post-${Date.now()}`),
+      postType: original.postType ?? 1,
       title: form.title.trim(),
       summary: form.summary.trim(),
       coverUrl: form.coverUrl,
       coverTone: form.coverTone.trim(),
-      content: `${form.content.trim()}\n\n#tags ${selectedTags.value.join(" ")}`,
-      readingMinutes: 3,
-      visibility: 1,
-      isTop: 0,
-      isFeatured: 0,
+      content: buildContentWithTags(),
+      readingMinutes: original.readingMinutes ?? 3,
+      boardId: original.boardId ?? null,
+      categoryId: original.categoryId ?? null,
+      columnId: original.columnId ?? null,
+      visibility: original.visibility ?? 1,
+      isTop: original.isTop ?? 0,
+      isFeatured: original.isFeatured ?? 0,
+      ranking: original.ranking ?? null,
     };
+
+    if (isEditing.value) {
+      await updateAdminPost(editingPostId.value, payload);
+      closePublishModal();
+      await fetchPosts();
+      return;
+    }
 
     const created = await createAdminPost(payload); // 默认草稿
     if (form.status === "published" && created?.id) {
@@ -290,6 +370,7 @@ onMounted(fetchPosts);
             <td><span class="admin-tag">{{ item.status }}</span></td>
             <td>{{ item.updated }}</td>
             <td class="admin-actions">
+              <button type="button" @click="openEditModal(item)">修改</button>
               <button type="button" @click="openDetail(item)">查看</button>
               <button type="button" @click="handlePublish(item)">发布</button>
               <button type="button" @click="handleOffline(item)">下线</button>
@@ -301,12 +382,14 @@ onMounted(fetchPosts);
     </article>
 
     <div v-if="publishOpen" class="admin-modal-mask" @click.self="closePublishModal">
-      <section class="admin-modal">
+      <section class="admin-modal admin-modal--post-editor">
         <header class="admin-modal__header">
+          <h3>{{ postModalTitle }}</h3>
           <h3>发布文章</h3>
           <button type="button" class="admin-modal__close" @click="closePublishModal">关闭</button>
         </header>
         <div class="admin-modal__body">
+          <p v-if="editLoading">加载文章中...</p>
           <div class="admin-form-grid">
             <label>
               文章标题
@@ -314,7 +397,7 @@ onMounted(fetchPosts);
             </label>
             <label>
               发布模式
-              <select v-model="form.status">
+              <select v-model="form.status" :disabled="isEditing">
                 <option value="published">立即发布</option>
                 <option value="draft">仅保存草稿</option>
               </select>

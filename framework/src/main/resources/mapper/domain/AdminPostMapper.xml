@@ -117,7 +117,8 @@
             visibility = #{req.visibility},
             is_top = #{req.isTop},
             is_featured = #{req.isFeatured},
-            ranking = #{req.ranking}
+            ranking = #{req.ranking},
+            update_time = NOW()
         WHERE id = #{id}
           AND deleted = 0
     </update>

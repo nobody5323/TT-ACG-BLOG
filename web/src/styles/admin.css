@@ -451,6 +451,14 @@
   box-shadow: 0 24px 70px rgba(66, 30, 53, 0.24);
 }
 
+.admin-modal--post-editor {
+  width: min(100%, 1080px);
+}
+
+.admin-modal--post-editor .admin-modal__header h3 + h3 {
+  display: none;
+}
+
 .admin-modal__header,
 .admin-modal__footer {
   display: flex;
@@ -522,7 +530,7 @@
 }
 
 .admin-editor {
-  min-height: 200px !important;
+  min-height: 320px !important;
 }
 
 .admin-upload-grid {
