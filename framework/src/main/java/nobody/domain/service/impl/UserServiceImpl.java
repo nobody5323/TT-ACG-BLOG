@@ -76,6 +76,7 @@ public class UserServiceImpl implements UserService {
                 asString(r.get("author")),
                 asString(r.get("publishedAt")),
                 asInt(r.get("readingMinutes")),
+                asPublicPath(r.get("coverUrl")),
                 asString(r.get("coverTone")),
                 asInt(r.get("featured")) == 1,
                 asInt(r.get("ranking")),
@@ -89,6 +90,14 @@ public class UserServiceImpl implements UserService {
 
     private String asString(Object o) {
         return o == null ? "" : String.valueOf(o);
+    }
+
+    private String asPublicPath(Object o) {
+        String path = asString(o).trim();
+        if (path.isBlank() || path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return "/" + path;
     }
 
     private Integer asInt(Object o) {

@@ -50,6 +50,7 @@ public final class HomeContentDtos {
             String author,
             String publishedAt,
             Integer readingMinutes,
+            String coverUrl,
             String coverTone,
             Boolean featured,
             Integer ranking,
@@ -139,4 +140,3 @@ public final class HomeContentDtos {
     ) {
     }
 }
-

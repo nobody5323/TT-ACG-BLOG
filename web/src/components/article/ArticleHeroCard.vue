@@ -10,6 +10,7 @@ defineProps({
 <template>
   <RouterLink :to="article.slug ? { name: 'article-detail', params: { slug: article.slug } } : '/articles'" class="hero-article-card">
     <div class="hero-article-card__media" :data-tone="article.coverTone">
+      <img v-if="article.coverUrl" :src="article.coverUrl" :alt="article.title" />
       <span>{{ article.category }}</span>
       <strong>置顶推荐</strong>
     </div>

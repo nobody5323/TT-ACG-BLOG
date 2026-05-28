@@ -601,6 +601,7 @@ ul {
 }
 
 .article-grid-card__img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1163,6 +1164,18 @@ ul {
   object-fit: cover;
 }
 
+.recent-item__thumb img,
+.article-list-card__cover img,
+.article-list-item__cover img,
+.feature-card__cover img,
+.hero-article-card__media img,
+.article-hero__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .recent-item__body {}
 
 .recent-item__title {
@@ -1352,6 +1365,15 @@ ul {
   overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
+  position: relative;
+}
+
+.article-hero__cover span {
+  position: absolute;
+  inset: auto 16px 16px 16px;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
 .article-detail__body {
@@ -1628,6 +1650,28 @@ ul {
 .feature-card__cover {
   height: 160px;
   position: relative;
+  overflow: hidden;
+}
+
+.article-list-item__cover > span,
+.hero-article-card__media > span,
+.hero-article-card__media > strong {
+  position: relative;
+  z-index: 1;
+}
+
+.feature-card__cover > span {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .feature-card__meta {
@@ -2340,6 +2384,7 @@ ul {
 .article-list-item__cover {
   position: relative;
   height: 160px;
+  overflow: hidden;
 }
 
 .article-list-item__cover span {
@@ -2405,6 +2450,39 @@ ul {
   text-decoration: none;
   color: var(--text);
   display: block;
+}
+
+.hero-article-card__media {
+  position: relative;
+  height: 190px;
+  overflow: hidden;
+}
+
+.hero-article-card__media > span {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.hero-article-card__media > strong {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(236, 72, 153, 0.8);
+  backdrop-filter: blur(6px);
+  font-size: 0.75rem;
 }
 
 /* ===== ANIMATIONS ===== */

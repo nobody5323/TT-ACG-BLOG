@@ -178,7 +178,8 @@ onMounted(loadArticles);
           >
             <!-- Cover -->
             <div class="article-list-card__cover" :data-tone="article.coverTone">
-              <div class="cover-tone" />
+              <img v-if="article.coverUrl" class="article-list-card__img" :src="article.coverUrl" :alt="article.title" />
+              <div v-else class="cover-tone" />
               <span v-if="article.featured" class="article-list-card__pin">置顶</span>
               <span class="article-list-card__bookmark">☆</span>
             </div>
@@ -329,7 +330,8 @@ onMounted(loadArticles);
                 {{ i + 1 }}
               </span>
               <div class="recent-item__thumb" :data-tone="article.coverTone">
-                <div class="cover-tone" />
+                <img v-if="article.coverUrl" :src="article.coverUrl" :alt="article.title" />
+                <div v-else class="cover-tone" />
               </div>
               <div class="recent-item__body">
                 <div class="recent-item__title">{{ article.title }}</div>

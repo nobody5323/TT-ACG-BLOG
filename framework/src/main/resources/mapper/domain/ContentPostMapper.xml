@@ -14,6 +14,7 @@
         su.nickname                                             AS author,
         DATE_FORMAT(cp.published_time, '%Y-%m-%d')             AS publishedAt,
         cp.reading_minutes                                      AS readingMinutes,
+        IFNULL(cp.cover_url, '')                                AS coverUrl,
         cp.cover_tone                                           AS coverTone,
         cp.content                                              AS content,
         cp.is_featured                                          AS featured,

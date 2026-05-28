@@ -270,6 +270,7 @@ public class ContentServiceImpl implements ContentService {
                 "",
                 0,
                 "",
+                "",
                 false,
                 0,
                 0,
@@ -361,6 +362,7 @@ public class ContentServiceImpl implements ContentService {
                 asString(row.get("author")),
                 asString(row.get("publishedAt")),
                 asInteger(row.get("readingMinutes")),
+                asPublicPath(row.get("coverUrl")),
                 asString(row.get("coverTone")),
                 asInteger(row.get("featured")) == 1,
                 asInteger(row.get("ranking")),
@@ -534,6 +536,14 @@ public class ContentServiceImpl implements ContentService {
 
     private String asString(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private String asPublicPath(Object value) {
+        String path = asString(value).trim();
+        if (path.isBlank() || path.startsWith("/") || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return "/" + path;
     }
 
     private Integer asInteger(Object value) {

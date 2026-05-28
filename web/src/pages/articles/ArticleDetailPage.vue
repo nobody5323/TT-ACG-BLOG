@@ -296,7 +296,8 @@ onMounted(loadPage);
           </div>
         </div>
         <div class="article-hero__cover" :data-tone="article.coverTone">
-          <span>文章封面</span>
+          <img v-if="article.coverUrl" :src="article.coverUrl" :alt="article.title" />
+          <span v-else>文章封面</span>
         </div>
       </header>
 

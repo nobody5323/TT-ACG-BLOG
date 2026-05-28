@@ -78,7 +78,8 @@ onMounted(async () => {
               class="article-grid-card"
             >
               <div class="article-grid-card__cover" :data-tone="article.coverTone">
-                <div class="cover-tone" />
+                <img v-if="article.coverUrl" class="article-grid-card__img" :src="article.coverUrl" :alt="article.title" />
+                <div v-else class="cover-tone" />
                 <span class="article-grid-card__category">{{ article.category }}</span>
               </div>
               <div class="article-grid-card__body">
@@ -191,7 +192,8 @@ onMounted(async () => {
                   {{ i + 1 }}
                 </span>
                 <div class="recent-item__thumb" :data-tone="article.coverTone">
-                  <div class="cover-tone" />
+                  <img v-if="article.coverUrl" :src="article.coverUrl" :alt="article.title" />
+                  <div v-else class="cover-tone" />
                 </div>
                 <div class="recent-item__body">
                   <div class="recent-item__title">{{ article.title }}</div>
