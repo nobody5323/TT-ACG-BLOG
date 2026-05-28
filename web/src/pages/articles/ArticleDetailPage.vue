@@ -53,6 +53,22 @@ const canSubmitComment = computed(
     !commentSubmitting.value,
 );
 
+function parseParagraph(paragraph = "") {
+  const value = String(paragraph || "").trim();
+  const imageMatch = value.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/);
+  if (imageMatch) {
+    return {
+      type: "image",
+      alt: imageMatch[1] || "文章图片",
+      src: imageMatch[2],
+    };
+  }
+  return {
+    type: "text",
+    text: value,
+  };
+}
+
 function normalizeCommentsPayload(data) {
   if (Array.isArray(data)) {
     return { items: data, nextCursor: null };
@@ -297,9 +313,19 @@ onMounted(loadPage);
         <div class="article-content">
           <section v-for="section in article.content" :key="section.heading">
             <h2>{{ section.heading }}</h2>
-            <p v-for="paragraph in section.paragraphs" :key="paragraph">
-              {{ paragraph }}
-            </p>
+            <template v-for="paragraph in section.paragraphs" :key="paragraph">
+              <figure v-if="parseParagraph(paragraph).type === 'image'" class="article-content__figure">
+                <img
+                  :src="parseParagraph(paragraph).src"
+                  :alt="parseParagraph(paragraph).alt"
+                  loading="lazy"
+                />
+                <figcaption v-if="parseParagraph(paragraph).alt">
+                  {{ parseParagraph(paragraph).alt }}
+                </figcaption>
+              </figure>
+              <p v-else>{{ parseParagraph(paragraph).text }}</p>
+            </template>
           </section>
         </div>
       </div>

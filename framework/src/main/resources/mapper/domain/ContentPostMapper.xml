@@ -15,6 +15,7 @@
         DATE_FORMAT(cp.published_time, '%Y-%m-%d')             AS publishedAt,
         cp.reading_minutes                                      AS readingMinutes,
         cp.cover_tone                                           AS coverTone,
+        cp.content                                              AS content,
         cp.is_featured                                          AS featured,
         cp.ranking                                              AS ranking,
         cp.view_count                                           AS views,

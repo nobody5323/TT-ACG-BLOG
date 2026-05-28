@@ -368,8 +368,59 @@ public class ContentServiceImpl implements ContentService {
                 asInteger(row.get("likes")),
                 asInteger(row.get("favorites")),
                 asString(row.get("column")),
-                List.of()
+                toArticleSections(row.get("content"))
         );
+    }
+
+    private List<HomeContentDtos.ArticleSectionDto> toArticleSections(Object value) {
+        String content = asString(value).replace("\r\n", "\n").trim();
+        if (content.isBlank()) {
+            return List.of();
+        }
+
+        content = content.replaceAll("(?m)^#tags\\s+.*$", "").trim();
+        List<HomeContentDtos.ArticleSectionDto> sections = new ArrayList<>();
+        String currentHeading = "正文";
+        List<String> paragraphs = new ArrayList<>();
+
+        for (String block : content.split("\\n\\s*\\n")) {
+            String cleaned = block.trim();
+            if (cleaned.isBlank()) {
+                continue;
+            }
+
+            String[] lines = cleaned.split("\\n");
+            int paragraphStart = 0;
+            String firstLine = lines[0].trim();
+            if (firstLine.matches("^#{1,6}\\s+.+")) {
+                if (!paragraphs.isEmpty()) {
+                    sections.add(new HomeContentDtos.ArticleSectionDto(currentHeading, paragraphs));
+                    paragraphs = new ArrayList<>();
+                }
+                currentHeading = firstLine.replaceFirst("^#{1,6}\\s+", "").trim();
+                paragraphStart = 1;
+            }
+
+            StringBuilder paragraph = new StringBuilder();
+            for (int i = paragraphStart; i < lines.length; i++) {
+                String line = lines[i].trim();
+                if (line.isBlank()) {
+                    continue;
+                }
+                if (!paragraph.isEmpty()) {
+                    paragraph.append('\n');
+                }
+                paragraph.append(line);
+            }
+            if (!paragraph.isEmpty()) {
+                paragraphs.add(paragraph.toString());
+            }
+        }
+
+        if (!paragraphs.isEmpty() || sections.isEmpty()) {
+            sections.add(new HomeContentDtos.ArticleSectionDto(currentHeading, paragraphs));
+        }
+        return sections;
     }
 
     private CategoryDto toCategoryDto(Map<String, Object> row) {
