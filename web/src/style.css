@@ -1425,6 +1425,7 @@ ul {
   color: var(--text);
   line-height: 1.85;
   margin-bottom: 14px;
+  white-space: pre-line;
 }
 
 .article-content__figure {

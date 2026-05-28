@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref } from "vue";
 import {
   createAdminPost,
   deleteAdminPost,
@@ -30,6 +30,7 @@ const detail = ref(null);
 const coverUploading = ref(false);
 const inlineImageUploading = ref(false);
 const inlineImages = ref([]);
+const editorRef = ref(null);
 
 const form = reactive({
   slug: "",
@@ -45,6 +46,12 @@ const canSubmit = computed(
   () => Boolean(form.title.trim()) && Boolean(form.content.trim()) && !publishing.value && !editLoading.value,
 );
 const isEditing = computed(() => Boolean(editingPostId.value));
+const editorSections = computed(() => parseContentSections(form.content));
+const editorOutline = computed(() => editorSections.value.map((section) => section.heading).filter(Boolean));
+const detailSections = computed(() => {
+  const parsed = splitContentTags(detail.value?.content || "");
+  return parseContentSections(parsed.content);
+});
 const postModalTitle = computed(() => (isEditing.value ? "修改文章" : "发布文章"));
 
 function statusText(v) {
@@ -124,6 +131,83 @@ function buildContentWithTags() {
     return content;
   }
   return `${content}\n\n#tags ${selectedTags.value.join(" ")}`;
+}
+
+function parseParagraph(paragraph = "") {
+  const value = String(paragraph || "").trim();
+  const imageMatch = value.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/);
+  if (imageMatch) {
+    return {
+      type: "image",
+      alt: imageMatch[1] || "文章图片",
+      src: imageMatch[2],
+    };
+  }
+  return {
+    type: "text",
+    text: value,
+  };
+}
+
+function parseContentSections(raw = "") {
+  const content = splitContentTags(raw).content.replace(/\r\n/g, "\n").trim();
+  if (!content) {
+    return [];
+  }
+
+  const sections = [];
+  let currentHeading = "正文";
+  let paragraphs = [];
+
+  for (const block of content.split(/\n\s*\n/)) {
+    const cleaned = block.trim();
+    if (!cleaned) continue;
+
+    const lines = cleaned.split("\n");
+    let paragraphStart = 0;
+    const firstLine = lines[0].trim();
+    const headingMatch = firstLine.match(/^#{1,6}\s+(.+)$/);
+    if (headingMatch) {
+      if (paragraphs.length) {
+        sections.push({ heading: currentHeading, paragraphs });
+        paragraphs = [];
+      }
+      currentHeading = headingMatch[1].trim();
+      paragraphStart = 1;
+    }
+
+    const paragraph = lines
+      .slice(paragraphStart)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join("\n");
+    if (paragraph) {
+      paragraphs.push(paragraph);
+    }
+  }
+
+  if (paragraphs.length || !sections.length) {
+    sections.push({ heading: currentHeading, paragraphs });
+  }
+  return sections;
+}
+
+async function insertHeading(level = 2) {
+  const textarea = editorRef.value;
+  const start = textarea?.selectionStart ?? form.content.length;
+  const end = textarea?.selectionEnd ?? start;
+  const selected = form.content.slice(start, end).trim() || "新目录标题";
+  const before = form.content.slice(0, start);
+  const after = form.content.slice(end);
+  const prefix = !before || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+  const suffix = !after || after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+  const heading = `${"#".repeat(level)} ${selected}`;
+  form.content = `${before}${prefix}${heading}${suffix}${after}`;
+
+  await nextTick();
+  const cursor = `${before}${prefix}${heading}`.length;
+  editorRef.value?.focus();
+  editorRef.value?.setSelectionRange(cursor, cursor);
 }
 
 function fillFormFromDetail(data) {
@@ -425,8 +509,34 @@ onMounted(fetchPosts);
           </div>
           <label>
             正文
-            <textarea v-model="form.content" class="admin-editor" placeholder="输入正文内容" />
+            <div class="admin-editor-toolbar">
+              <button type="button" @click="insertHeading(1)">一级目录</button>
+              <button type="button" @click="insertHeading(2)">二级目录</button>
+            </div>
+            <textarea ref="editorRef" v-model="form.content" class="admin-editor" placeholder="输入正文内容" />
           </label>
+          <div class="admin-editor-layout">
+            <aside class="admin-outline-panel">
+              <p>目录设置</p>
+              <ol v-if="editorOutline.length">
+                <li v-for="heading in editorOutline" :key="heading">{{ heading }}</li>
+              </ol>
+              <span v-else>暂无目录</span>
+            </aside>
+            <div v-if="editorSections.length" class="admin-post-preview">
+              <p class="admin-post-preview__title">前台预览</p>
+              <section v-for="section in editorSections" :key="section.heading">
+                <h2>{{ section.heading }}</h2>
+                <template v-for="paragraph in section.paragraphs" :key="paragraph">
+                  <figure v-if="parseParagraph(paragraph).type === 'image'">
+                    <img :src="parseParagraph(paragraph).src" :alt="parseParagraph(paragraph).alt" />
+                    <figcaption v-if="parseParagraph(paragraph).alt">{{ parseParagraph(paragraph).alt }}</figcaption>
+                  </figure>
+                  <p v-else>{{ parseParagraph(paragraph).text }}</p>
+                </template>
+              </section>
+            </div>
+          </div>
           <label class="admin-upload-box admin-upload-box--inline-images">
             正文图片
             <input type="file" accept="image/*" multiple :disabled="inlineImageUploading" @change="handleInlineImageUpload" />
@@ -504,7 +614,27 @@ onMounted(fetchPosts);
             <p><strong>摘要：</strong>{{ detail.summary }}</p>
             <p><strong>封面：</strong>{{ detail.coverUrl }}</p>
             <p><strong>正文：</strong></p>
-            <pre style="white-space: pre-wrap; margin: 0">{{ detail.content }}</pre>
+            <div class="admin-editor-layout">
+              <aside class="admin-outline-panel">
+                <p>目录设置</p>
+                <ol v-if="detailSections.length">
+                  <li v-for="section in detailSections" :key="section.heading">{{ section.heading }}</li>
+                </ol>
+                <span v-else>暂无目录</span>
+              </aside>
+              <div class="admin-post-preview">
+                <section v-for="section in detailSections" :key="section.heading">
+                  <h2>{{ section.heading }}</h2>
+                  <template v-for="paragraph in section.paragraphs" :key="paragraph">
+                    <figure v-if="parseParagraph(paragraph).type === 'image'">
+                      <img :src="parseParagraph(paragraph).src" :alt="parseParagraph(paragraph).alt" />
+                      <figcaption v-if="parseParagraph(paragraph).alt">{{ parseParagraph(paragraph).alt }}</figcaption>
+                    </figure>
+                    <p v-else>{{ parseParagraph(paragraph).text }}</p>
+                  </template>
+                </section>
+              </div>
+            </div>
           </template>
         </div>
       </section>
