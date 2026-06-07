@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import {
   createAdminPost,
   deleteAdminPost,
@@ -31,6 +31,10 @@ const coverUploading = ref(false);
 const inlineImageUploading = ref(false);
 const inlineImages = ref([]);
 const editorRef = ref(null);
+const draftStatus = ref("");
+const pasteUploading = ref(false);
+const DRAFT_PREFIX = "acg-admin-post-draft:";
+let draftTimer = null;
 
 const form = reactive({
   slug: "",
@@ -52,6 +56,7 @@ const detailSections = computed(() => {
   const parsed = splitContentTags(detail.value?.content || "");
   return parseContentSections(parsed.content);
 });
+const hasDraftStatus = computed(() => Boolean(draftStatus.value));
 const postModalTitle = computed(() => (isEditing.value ? "修改文章" : "发布文章"));
 
 function statusText(v) {
@@ -89,6 +94,7 @@ async function fetchPosts() {
 
 function openPublishModal() {
   resetPostForm();
+  restoreDraft();
   publishOpen.value = true;
 }
 
@@ -111,6 +117,89 @@ function resetPostForm() {
   newTag.value = "";
   selectedTags.value = [];
   inlineImages.value = [];
+  draftStatus.value = "";
+}
+
+function draftKey(id = editingPostId.value) {
+  return `${DRAFT_PREFIX}${id ? `edit:${id}` : "new"}`;
+}
+
+function draftSnapshot() {
+  return {
+    form: {
+      slug: form.slug,
+      title: form.title,
+      summary: form.summary,
+      content: form.content,
+      coverUrl: form.coverUrl,
+      coverTone: form.coverTone,
+      status: form.status,
+    },
+    selectedTags: [...selectedTags.value],
+    inlineImages: [...inlineImages.value],
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function applyDraft(snapshot) {
+  if (!snapshot || !snapshot.form) return false;
+  form.slug = snapshot.form.slug || "";
+  form.title = snapshot.form.title || "";
+  form.summary = snapshot.form.summary || "";
+  form.content = snapshot.form.content || "";
+  form.coverUrl = snapshot.form.coverUrl || "";
+  form.coverTone = snapshot.form.coverTone || "";
+  form.status = snapshot.form.status || "published";
+  selectedTags.value = Array.isArray(snapshot.selectedTags) ? snapshot.selectedTags : [];
+  inlineImages.value = Array.isArray(snapshot.inlineImages) ? snapshot.inlineImages : [];
+  for (const tag of selectedTags.value) {
+    if (!tagPool.value.includes(tag)) tagPool.value.push(tag);
+  }
+  return true;
+}
+
+function restoreDraft(id = editingPostId.value) {
+  if (typeof window === "undefined") return false;
+  const raw = window.localStorage.getItem(draftKey(id));
+  if (!raw) return false;
+  try {
+    const snapshot = JSON.parse(raw);
+    if (applyDraft(snapshot)) {
+      const time = snapshot.savedAt ? new Date(snapshot.savedAt).toLocaleString() : "";
+      draftStatus.value = time ? `已恢复本地草稿：${time}` : "已恢复本地草稿";
+      return true;
+    }
+  } catch {
+    window.localStorage.removeItem(draftKey(id));
+  }
+  return false;
+}
+
+function saveDraftNow() {
+  if (typeof window === "undefined" || !publishOpen.value || editLoading.value || publishing.value) return;
+  try {
+    window.localStorage.setItem(draftKey(), JSON.stringify(draftSnapshot()));
+    draftStatus.value = `草稿已自动保存：${new Date().toLocaleTimeString()}`;
+  } catch {
+    draftStatus.value = "本地草稿保存失败，可能是浏览器存储空间不足";
+  }
+}
+
+function scheduleDraftSave() {
+  if (!publishOpen.value || editLoading.value || publishing.value) return;
+  window.clearTimeout(draftTimer);
+  draftTimer = window.setTimeout(saveDraftNow, 500);
+}
+
+function clearDraft(id = editingPostId.value) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(draftKey(id));
+  draftStatus.value = "";
+}
+
+function clearCurrentDraft() {
+  clearDraft();
+  draftStatus.value = "本地草稿已清除";
 }
 
 function splitContentTags(content = "") {
@@ -234,6 +323,7 @@ async function openEditModal(item) {
     const data = await getAdminPost(item.id);
     editOriginal.value = data;
     fillFormFromDetail(data);
+    restoreDraft(item.id);
   } catch (error) {
     window.alert(error instanceof Error ? error.message : "加载文章失败");
     closePublishModal();
@@ -268,12 +358,38 @@ function toPublicUploadUrl(item) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-function appendInlineImage(item) {
+function insertTextAtCursor(text) {
+  const textarea = editorRef.value;
+  const insertText = String(text || "");
+  const start = textarea?.selectionStart ?? form.content.length;
+  const end = textarea?.selectionEnd ?? start;
+  form.content = `${form.content.slice(0, start)}${insertText}${form.content.slice(end)}`;
+
+  return nextTick().then(() => {
+    const cursor = start + insertText.length;
+    editorRef.value?.focus();
+    editorRef.value?.setSelectionRange(cursor, cursor);
+  });
+}
+
+function markdownForUpload(item) {
   const url = toPublicUploadUrl(item);
-  if (!url) return;
+  if (!url) return "";
   const name = item.originalName || item.storedName || "image";
-  const markdown = `![${name}](${url})`;
+  return `![${name}](${url})`;
+}
+
+function appendInlineImage(item) {
+  const markdown = markdownForUpload(item);
+  if (!markdown) return;
   form.content = `${form.content.trimEnd()}\n\n${markdown}\n`;
+}
+
+async function insertInlineImageAtCursor(item) {
+  const markdown = markdownForUpload(item);
+  if (!markdown) return;
+  const prefix = form.content && !form.content.endsWith("\n\n") ? "\n\n" : "";
+  await insertTextAtCursor(`${prefix}${markdown}\n\n`);
 }
 
 async function handleCoverUpload(event) {
@@ -313,6 +429,99 @@ async function handleInlineImageUpload(event) {
   }
 }
 
+async function fileFromDataUrl(dataUrl, index = 0) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const extension = blob.type.split("/")[1] || "png";
+  return new File([blob], `pasted-image-${Date.now()}-${index}.${extension}`, {
+    type: blob.type || "image/png",
+  });
+}
+
+async function clipboardImagesFromHtml(html = "") {
+  const images = [];
+  if (!html || typeof DOMParser === "undefined") return images;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const nodes = Array.from(doc.querySelectorAll("img"));
+  for (const [index, img] of nodes.entries()) {
+    const src = img.getAttribute("src") || "";
+    if (src.startsWith("data:image/")) {
+      images.push(await fileFromDataUrl(src, index));
+    }
+  }
+  return images;
+}
+
+async function collectClipboardImages(clipboardData) {
+  const files = [];
+  for (const item of Array.from(clipboardData?.items || [])) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) files.push(file);
+    }
+  }
+
+  const htmlImages = await clipboardImagesFromHtml(clipboardData?.getData("text/html") || "");
+  return [...files, ...htmlImages];
+}
+
+function clipboardHasImages(clipboardData) {
+  const hasFileImage = Array.from(clipboardData?.items || []).some(
+    (item) => item.kind === "file" && item.type.startsWith("image/"),
+  );
+  const html = clipboardData?.getData("text/html") || "";
+  return hasFileImage || /<img[\s>]/i.test(html);
+}
+
+function normalizePastedText(text = "") {
+  return String(text || "").replace(/\r\n/g, "\n").trimEnd();
+}
+
+async function uploadImagesAtCursor(files) {
+  if (!files.length) return;
+  pasteUploading.value = true;
+  inlineImageUploading.value = true;
+  try {
+    const uploaded = [];
+    for (const file of files) {
+      const item = await uploadAdminImage(file);
+      uploaded.push(item);
+      await insertInlineImageAtCursor(item);
+    }
+    inlineImages.value = [...inlineImages.value, ...uploaded];
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : "粘贴图片上传失败");
+  } finally {
+    pasteUploading.value = false;
+    inlineImageUploading.value = false;
+  }
+}
+
+async function handleEditorPaste(event) {
+  const clipboardData = event.clipboardData;
+  if (!clipboardData) return;
+
+  if (!clipboardHasImages(clipboardData)) {
+    return;
+  }
+  event.preventDefault();
+
+  const images = await collectClipboardImages(clipboardData);
+  if (!images.length) {
+    const text = normalizePastedText(clipboardData.getData("text/plain"));
+    if (text) {
+      await insertTextAtCursor(text);
+    }
+    return;
+  }
+
+  const text = normalizePastedText(clipboardData.getData("text/plain"));
+  if (text) {
+    await insertTextAtCursor(text);
+  }
+  await uploadImagesAtCursor(images);
+}
+
 function insertInlineImage(item) {
   appendInlineImage(item);
 }
@@ -346,7 +555,9 @@ async function submitPublish() {
     };
 
     if (isEditing.value) {
+      const submittedId = editingPostId.value;
       await updateAdminPost(editingPostId.value, payload);
+      clearDraft(submittedId);
       closePublishModal();
       await fetchPosts();
       return;
@@ -357,6 +568,7 @@ async function submitPublish() {
       await publishAdminPost(created.id); // 立即发布
     }
 
+    clearDraft();
     closePublishModal();
     await fetchPosts();
   } catch (error) {
@@ -415,6 +627,27 @@ async function handleDelete(item) {
     window.alert(error instanceof Error ? error.message : "删除失败");
   }
 }
+
+watch(
+  () => ({
+    slug: form.slug,
+    title: form.title,
+    summary: form.summary,
+    content: form.content,
+    coverUrl: form.coverUrl,
+    coverTone: form.coverTone,
+    status: form.status,
+    tags: [...selectedTags.value],
+    inlineImages: [...inlineImages.value],
+  }),
+  scheduleDraftSave,
+  { deep: true },
+);
+
+onBeforeUnmount(() => {
+  window.clearTimeout(draftTimer);
+  saveDraftNow();
+});
 
 onMounted(fetchPosts);
 </script>
@@ -512,8 +745,18 @@ onMounted(fetchPosts);
             <div class="admin-editor-toolbar">
               <button type="button" @click="insertHeading(1)">一级目录</button>
               <button type="button" @click="insertHeading(2)">二级目录</button>
+              <button type="button" :disabled="!hasDraftStatus" @click="clearCurrentDraft">清除本地草稿</button>
             </div>
-            <textarea ref="editorRef" v-model="form.content" class="admin-editor" placeholder="输入正文内容" />
+            <textarea
+              ref="editorRef"
+              v-model="form.content"
+              class="admin-editor"
+              placeholder="输入正文内容，也可以从 Word 复制文字和图片后直接粘贴"
+              @paste="handleEditorPaste"
+            />
+            <small class="admin-draft-status">
+              {{ pasteUploading ? "正在上传粘贴图片..." : draftStatus || "草稿会自动保存在本机浏览器" }}
+            </small>
           </label>
           <div class="admin-editor-layout">
             <aside class="admin-outline-panel">

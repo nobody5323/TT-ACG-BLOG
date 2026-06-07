@@ -548,6 +548,19 @@
   font-weight: 700;
 }
 
+.admin-editor-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-draft-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  color: #775a72;
+  font-weight: 500;
+}
+
 .admin-editor-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
